@@ -6,7 +6,7 @@ import { parsePagination } from '@/lib/moderation';
 import { requireRole } from '@/lib/session';
 
 export async function GET(req) {
-    const { error, status } = await requireRole();
+    const { session, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
     try {
     await connectDB();
@@ -28,19 +28,28 @@ export async function GET(req) {
         { $match: filter },
         { $lookup: { from: 'answers', let: { answerId: '$answer' }, pipeline: [
             { $match: { $expr: { $and: [{ $eq: ['$_id', '$$answerId'] }, { $eq: ['$status', 'VERIFIED'] }, { $ne: ['$flaggedForReview', true] }] } } },
-            { $project: { _id: 1 } },
+            { $project: { _id: 1, helper: 1 } },
         ], as: 'eligibleAnswer' } },
         { $lookup: { from: 'doubts', let: { doubtId: '$doubt' }, pipeline: [
             { $match: { $expr: { $and: [{ $eq: ['$_id', '$$doubtId'] }, { $ne: ['$flaggedForReview', true] }, { $not: [{ $in: ['$status', ['DUPLICATE', 'REJECTED']] }] }] } } },
-            { $project: { _id: 1 } },
+            { $project: { _id: 1, ratingAverage: 1, ratingCount: 1 } },
         ], as: 'eligibleDoubt' } },
         { $match: { 'eligibleAnswer.0': { $exists: true }, 'eligibleDoubt.0': { $exists: true } } },
         { $facet: {
             items: [
                 { $sort: sort }, { $skip: skip }, { $limit: limit },
+                { $set: {
+                    helperId: { $arrayElemAt: ['$eligibleAnswer.helper', 0] },
+                    ratingAverage: { $ifNull: [{ $arrayElemAt: ['$eligibleDoubt.ratingAverage', 0] }, 0] },
+                    ratingCount: { $ifNull: [{ $arrayElemAt: ['$eligibleDoubt.ratingCount', 0] }, 0] },
+                } },
                 { $lookup: { from: 'users', localField: 'verifiedBy', foreignField: '_id', pipeline: [{ $project: { name: 1 } }], as: 'verifiedByUser' } },
-                { $set: { verifiedBy: { $arrayElemAt: ['$verifiedByUser', 0] } } },
-                { $project: { eligibleAnswer: 0, eligibleDoubt: 0, verifiedByUser: 0, score: 0 } },
+                { $lookup: { from: 'users', localField: 'helperId', foreignField: '_id', pipeline: [{ $project: { name: 1 } }], as: 'helperUser' } },
+                { $set: {
+                    verifiedBy: { $arrayElemAt: ['$verifiedByUser', 0] },
+                    helper: { $arrayElemAt: ['$helperUser', 0] },
+                } },
+                { $project: { eligibleAnswer: 0, eligibleDoubt: 0, verifiedByUser: 0, helperUser: 0, helperId: 0, score: 0 } },
             ],
             total: [{ $count: 'value' }],
         } },

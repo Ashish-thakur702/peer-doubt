@@ -8,15 +8,14 @@
   --ui-graphite: #596a82;
   --ui-rule: #dce4ef;
   --ui-margin: #c34150;
-  --ui-marker: #dce8ff;
-  --ui-pencil: #4263c6;
+  --ui-marker: #eeeaff;
+  --ui-pencil: #674fc4;
   --ui-primary-fg: #ffffff;
   --ui-verified: #187b61;
   --ui-danger-bg: #fff0f1;
   --ui-shadow: 0 16px 40px rgb(20 39 76 / 0.08);
-  --ui-focus: #5478e7;
-  --ui-grid-dot: #cbd5e1;
-  --ui-top-glow: rgba(59, 102, 219, 0.04);
+  --ui-focus: #755ed0;
+  --ui-top-glow: rgba(103, 79, 196, 0.035);
   --ui-card-bg: var(--ui-sheet);
   --ui-card-border: var(--ui-rule);
   --ui-card-shadow: none;
@@ -33,19 +32,18 @@
   --ui-graphite: #a5b4ca;
   --ui-rule: #29384f;
   --ui-margin: #ff929c;
-  --ui-marker: #263755;
-  --ui-pencil: #9ab0ff;
+  --ui-marker: #29243d;
+  --ui-pencil: #b5a4ff;
   --ui-primary-fg: #101a2b;
   --ui-verified: #69d9b1;
   --ui-danger-bg: #3a222d;
   --ui-shadow: 0 16px 40px rgb(0 0 0 / 0.25);
-  --ui-focus: #9ab0ff;
-  --ui-grid-dot: rgb(148 163 184 / 0.18);
-  --ui-top-glow: rgba(59, 102, 219, 0.08);
-  --ui-card-bg: linear-gradient(to bottom, rgb(30 41 59 / 0.6), rgb(15 23 42 / 0.5));
-  --ui-card-border: rgb(255 255 255 / 0.07);
-  --ui-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 12px 32px -8px rgb(0 0 0 / 0.45);
-  --ui-metric-bg: linear-gradient(135deg, rgb(15 23 42 / 0.8), rgb(2 6 23 / 0.6));
+  --ui-focus: #b5a4ff;
+  --ui-top-glow: rgba(133, 105, 225, 0.08);
+  --ui-card-bg: var(--ui-sheet);
+  --ui-card-border: var(--ui-rule);
+  --ui-card-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
+  --ui-metric-bg: #17243a;
 }
 
 @theme inline {
@@ -75,21 +73,11 @@ body {
   min-height: 100vh;
   margin: 0;
   background-color: var(--ui-paper);
-  background-image:
-    radial-gradient(circle at 50% -8%, var(--ui-top-glow), transparent 34rem),
-    radial-gradient(var(--ui-grid-dot) 1px, transparent 1px);
-  background-position: center top, 0 0;
-  background-size: auto, 24px 24px;
-  background-attachment: fixed;
+  background-image: radial-gradient(circle at 50% -8%, var(--ui-top-glow), transparent 34rem);
+  background-position: center top;
   color: var(--ui-ink);
   font-family: var(--font-ui);
   transition: background-color 160ms ease, color 160ms ease;
-}
-
-[data-theme="dark"] body {
-  background-image:
-    radial-gradient(ellipse 80% 45% at 50% -10%, rgba(59, 102, 219, 0.22), rgba(124, 58, 237, 0.08), transparent),
-    radial-gradient(var(--ui-grid-dot) 1px, transparent 1px);
 }
 
 ::selection {
@@ -181,10 +169,10 @@ input, textarea, select {
   }
 
   .btn-primary {
-    background: linear-gradient(180deg, #3b66db 0%, #2e54c3 100%);
+    background: #674fc4;
     color: #fff;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 4px 12px rgb(59 102 219 / 0.25);
-    transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+    box-shadow: 0 2px 8px rgb(54 42 104 / 0.16);
+    transition: background-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
   }
 
   .btn-quiet {
@@ -198,8 +186,8 @@ input, textarea, select {
   }
 
   .btn-primary:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 6px 16px rgb(59 102 219 / 0.35);
+    background: #5942ad;
+    box-shadow: 0 4px 12px rgb(54 42 104 / 0.22);
   }
 
   .btn-quiet:hover:not(:disabled) {
@@ -229,11 +217,11 @@ input, textarea, select {
   }
 
   .brand-mark {
-    background: linear-gradient(135deg, #3b82f6, #4f46e5);
+    background: #674fc4;
   }
 
   .brand-wordmark-un {
-    color: #4f46e5;
+    color: #674fc4;
     font-weight: 500;
   }
 
@@ -246,32 +234,25 @@ input, textarea, select {
   }
 
   [data-theme="dark"] .card {
-    backdrop-filter: blur(12px);
     box-shadow: var(--ui-card-shadow);
   }
 
   [data-theme="dark"] .display-heading-gradient {
-    background-image: linear-gradient(to bottom, #fff, #cbd5e1);
-    background-clip: text;
-    color: transparent;
+    color: var(--ui-ink);
   }
 
   [data-theme="dark"] .eyebrow-gradient {
-    background-image: linear-gradient(to right, #38bdf8, #818cf8);
-    background-clip: text;
-    color: transparent;
+    color: var(--ui-pencil);
   }
 
   [data-theme="dark"] .brand-mark {
-    background: linear-gradient(135deg, rgb(37 99 235 / 0.85), rgb(79 70 229 / 0.9));
-    border: 1px solid rgb(96 165 250 / 0.25);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.15), 0 8px 22px rgb(37 99 235 / 0.28);
+    background: #755ed0;
+    border: 1px solid rgb(181 164 255 / 0.24);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.2);
   }
 
   [data-theme="dark"] .brand-wordmark-un {
-    background-image: linear-gradient(to right, #38bdf8, #818cf8);
-    background-clip: text;
-    color: transparent;
+    color: var(--ui-pencil);
   }
 
   [data-theme="dark"] .brand-wordmark-stuck {
@@ -279,17 +260,17 @@ input, textarea, select {
   }
 
   [data-theme="dark"] .nav-link-active {
-    background: linear-gradient(135deg, rgb(37 99 235 / 0.25), rgb(99 102 241 / 0.15));
-    border-color: rgb(96 165 250 / 0.25);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 0 18px rgb(59 130 246 / 0.08);
+    background: color-mix(in srgb, var(--ui-pencil) 14%, var(--ui-sheet));
+    border-color: color-mix(in srgb, var(--ui-pencil) 28%, var(--ui-rule));
+    box-shadow: none;
   }
 
   [data-theme="dark"] .status-badge,
   [data-theme="dark"] .month-pill {
-    background: linear-gradient(135deg, rgb(37 99 235 / 0.25), rgb(99 102 241 / 0.15));
-    border: 1px solid rgb(96 165 250 / 0.25);
-    color: #bfdbfe;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+    background: color-mix(in srgb, var(--ui-pencil) 14%, var(--ui-sheet));
+    border: 1px solid color-mix(in srgb, var(--ui-pencil) 24%, var(--ui-rule));
+    color: var(--ui-pencil);
+    box-shadow: none;
   }
 
   [data-theme="dark"] .status-badge[data-status="VERIFIED"],
@@ -307,23 +288,20 @@ input, textarea, select {
   }
 
   [data-theme="dark"] .metric-tile-active {
-    background:
-      radial-gradient(circle at 15% 0%, rgb(99 102 241 / 0.22), transparent 58%),
-      linear-gradient(135deg, rgb(15 23 42 / 0.8), rgb(2 6 23 / 0.6));
-    border-color: rgb(129 140 248 / 0.35);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 8px 24px -14px rgb(79 70 229 / 0.8);
+    background: color-mix(in srgb, var(--ui-pencil) 12%, var(--ui-sheet));
+    border-color: color-mix(in srgb, var(--ui-pencil) 28%, var(--ui-rule));
+    box-shadow: none;
   }
 
   [data-theme="dark"] .inner-answer-card {
-    background: linear-gradient(135deg, rgb(15 23 42 / 0.8), rgb(2 6 23 / 0.6));
-    border: 1px solid rgb(255 255 255 / 0.06);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+    background: var(--ui-paper);
+    border: 1px solid var(--ui-rule);
+    box-shadow: none;
   }
 
   .app-navbar {
     border-bottom: 1px solid color-mix(in srgb, var(--ui-ink) 5%, transparent);
-    background: color-mix(in srgb, var(--ui-sheet) 80%, transparent);
-    backdrop-filter: blur(12px);
+    background: var(--ui-sheet);
   }
 
   .nav-link,
@@ -441,8 +419,8 @@ input, textarea, select {
     width: 10rem;
     transform: translateX(-50%);
     border-radius: 999px;
-    background: rgb(59 102 219 / 0.1);
-    filter: blur(2rem);
+    background: color-mix(in srgb, var(--ui-pencil) 8%, transparent);
+    filter: blur(1.5rem);
     pointer-events: none;
   }
 
@@ -450,7 +428,7 @@ input, textarea, select {
     position: relative;
     color: var(--ui-pencil);
     background: color-mix(in srgb, var(--ui-marker) 80%, var(--ui-sheet));
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 10px 24px rgb(59 102 219 / 0.14);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 6px 16px color-mix(in srgb, var(--ui-pencil) 12%, transparent);
   }
 
   .margin-sheet {
