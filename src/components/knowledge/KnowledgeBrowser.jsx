@@ -66,6 +66,10 @@ export default function KnowledgeBrowser({ initialFilters = { q: '', course: '',
                 <p className="mt-4 text-xs font-bold uppercase tracking-wide text-pencil">{entry.course} · {entry.topic}</p>
                 <h2 className="mt-2 text-lg font-bold leading-snug">{entry.title}</h2>
                 <p className="mt-2 line-clamp-3 text-sm leading-6 text-graphite">{entry.answerContent}</p>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-rule pt-3 text-xs text-graphite">
+                    <p>Answered by <span className="font-semibold text-ink">{entry.helper?.name || 'Peer helper'}</span> <span aria-hidden="true">&middot;</span> Verified by <span className="font-semibold text-ink">{entry.verifiedBy?.name || 'Moderator'}</span></p>
+                    <p>{entry.ratingCount > 0 ? <><span aria-hidden="true">&#9733;</span> {Number(entry.ratingAverage || 0).toFixed(1)} <span aria-hidden="true">&middot;</span> {entry.ratingCount} {entry.ratingCount === 1 ? 'rating' : 'ratings'}</> : 'No question ratings yet'}</p>
+                </div>
                 <Link href={`/knowledge/${entry._id}`} className="mt-auto inline-flex pt-5 text-sm font-bold text-pencil hover:underline">Read full explanation <span className="ml-1" aria-hidden="true">→</span></Link>
             </article>)}
         </div>}

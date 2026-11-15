@@ -6,7 +6,6 @@ import { authOptions } from '@/lib/auth';
 
 import StatusTimeline from '@/components/StatusTimeLine';
 
-import StatusBadge from '@/components/StatusBadge';
 
 const PROBLEMS = [
     {
@@ -64,12 +63,6 @@ const ROLES = [
     },
 ];
 
-const LIBRARY = [
-    { title: 'Why does Dijkstra fail with negative edges?', meta: 'Graph Algorithms in DAA' },
-    { title: 'When does a deadlock occur?', meta: 'Deadlocks in OS' },
-    { title: 'Why does 3NF still allow some redundancy?', meta: 'Normalization in DBMS' },
-];
-
 async function LandingContent() {
     const session = await getServerSession(authOptions);
     if (session) redirect('/doubts/mine');
@@ -98,11 +91,11 @@ async function LandingContent() {
 
                     <div className="relative">
                         <div aria-hidden="true" className="absolute inset-0 translate-x-3 translate-y-3 rounded-md bg-marker/80" />
-                        <div className="hero-badge absolute -right-5 -top-5 z-10 hidden rounded-full bg-white px-3 py-2 text-xs font-medium text-ink shadow-md md:block">
-                            ⚡ Avg. response: 6 mins
+                        <div className="hero-badge absolute -right-5 -top-5 z-10 hidden rounded-full border border-rule bg-sheet px-3 py-2 text-xs font-medium text-ink shadow-md md:block">
+                            A helper has claimed this doubt
                         </div>
                         <div className="hero-badge absolute -bottom-5 -left-5 z-10 hidden rounded-full bg-verified px-3 py-2 text-xs font-medium text-white shadow-md md:block">
-                            ✓ Verified by Prof. Sharma
+                            Reviewed by course staff
                         </div>
                         <div className="hero-card margin-sheet relative rounded-md border border-rule py-7 pl-14 pr-6">
                             <StatusTimeline status="VERIFIED" />
@@ -112,8 +105,8 @@ async function LandingContent() {
                                 <div className="flex items-center gap-2">
                                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-pencil text-xs font-semibold text-white" aria-hidden="true">R</span>
                                     <div>
-                                        <p className="text-sm font-medium">Answered by Rohan</p>
-                                        <p className="text-xs text-graphite">4 mins ago</p>
+                                    <p className="text-sm font-medium">Answered by a classmate</p>
+                                        <p className="text-xs text-graphite">Step-by-step explanation</p>
                                     </div>
                                 </div>
                                 <p className="mt-1 font-serif text-[15px] leading-relaxed">
@@ -190,19 +183,19 @@ async function LandingContent() {
                             Once a CR or faculty member verifies an answer, it is saved to the class library. Search it by
                             course and topic before you ask, so the next student does not have to wait for the same answer.
                         </p>
+                        <Link href="/register" className="mt-6 inline-flex font-semibold text-pencil hover:underline">Join your class on unStuck <span className="ml-1" aria-hidden="true">â†’</span></Link>
                     </div>
-                    <div className="margin-sheet rounded-md border border-rule py-3 pl-14 pr-5">
-                        <ul>
-                            {LIBRARY.map((l) => (
-                                <li key={l.title} className="flex items-start justify-between gap-3 border-b border-rule py-3 last:border-b-0">
-                                    <div>
-                                        <p className="font-medium">{l.title}</p>
-                                        <p className="text-sm text-graphite">{l.meta}</p>
-                                    </div>
-                                    <StatusBadge status="VERIFIED" />
-                                </li>
-                            ))}
-                        </ul>
+                    <div className="card divide-y divide-rule p-2">
+                        {[
+                            ['Search by course and topic', 'Start with the class or concept you are studying.'],
+                            ['Read reviewed explanations', 'Open the full answer and see who verified it.'],
+                            ['Save useful references', 'Keep the answers you want to return to.'],
+                        ].map(([title, description], index) => (
+                            <div key={title} className="flex items-start gap-4 px-3 py-4 sm:px-4">
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-marker text-sm font-bold text-pencil">{index + 1}</span>
+                                <div><h3 className="font-semibold">{title}</h3><p className="mt-1 text-sm leading-6 text-graphite">{description}</p></div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </section>

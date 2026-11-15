@@ -86,7 +86,7 @@ export default function Navbar() {
         <header className="app-navbar sticky top-0 z-30">
             <nav className="mx-auto flex min-h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
                 <Link href="/" className="flex shrink-0 items-center gap-2.5 text-[17px] font-bold tracking-tight">
-                    <span className="brand-mark flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold text-white shadow-[0_5px_12px_rgba(59,102,219,0.2)]" aria-hidden="true">uS</span>
+                    <span className="brand-mark flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold text-white shadow-[0_5px_12px_rgba(103,79,196,0.18)]" aria-hidden="true">uS</span>
                     <span aria-label="unStuck"><span className="brand-wordmark-un">un</span><span className="brand-wordmark-stuck font-bold">Stuck</span></span>
                 </Link>
 
@@ -100,7 +100,7 @@ export default function Navbar() {
                                     href={l.href}
                                     aria-current={active ? 'page' : undefined}
                                     className={`nav-link shrink-0 rounded-lg px-3.5 py-1.5 transition-colors ${active
-                                        ? 'nav-link-active border border-indigo-500/15 bg-marker font-semibold text-ink'
+                                        ? 'nav-link-active border border-pencil/20 bg-marker font-semibold text-ink'
                                         : 'border border-transparent text-graphite hover:bg-paper hover:text-ink'
                                         }`}
                                 >
