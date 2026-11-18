@@ -3,7 +3,8 @@ import Answer from '@/models/Answer';
 import Doubt from '@/models/Doubt';
 import Report from '@/models/Report';
 import { parsePagination } from '@/lib/moderation';
-import { requireRole } from '@/lib/session';
+import { requireRole, requirePermission } from '@/lib/session';
+import { getModerationReportFilter } from '@/lib/auth/scope.mjs';
 import { z } from 'zod';
 
 const submissionSchema = z.object({
@@ -50,14 +51,14 @@ export async function POST(req) {
 }
 
 export async function GET(req) {
-    const { error, status } = await requireRole('cr', 'faculty');
+    const { user, error, status } = await requirePermission('canReviewReports');
     if (error) return Response.json({ msg: error }, { status });
     await connectDB();
     const url = new URL(req.url);
     const { page, limit, skip } = parsePagination(url.searchParams);
     const reportStatus = url.searchParams.get('status');
     const targetType = url.searchParams.get('type');
-    const filter = {};
+    const filter = { ...await getModerationReportFilter(user, { Doubt, Answer }) };
     if (reportStatus && !['OPEN', 'RESOLVED', 'DISMISSED'].includes(reportStatus)) return Response.json({ msg: 'Unknown report status' }, { status: 400 });
     if (targetType && !['doubt', 'answer'].includes(targetType)) return Response.json({ msg: 'Unknown reported content type' }, { status: 400 });
     if (reportStatus) filter.status = reportStatus;

@@ -13,7 +13,7 @@ export function getNavigationLinks(roles = []) {
     } else if (roles.includes('student')) {
         links.splice(2, 0, { href: '/helper/profile', label: 'Become a helper' });
     }
-    if (roles.some((role) => ['cr', 'faculty'].includes(role))) {
+    if (roles.some((role) => ['cr', 'faculty', 'admin'].includes(role))) {
         links.push({ href: '/moderation', label: 'Moderation' });
     }
     if (roles.includes('admin')) links.push({ href: '/admin/users', label: 'User access' });

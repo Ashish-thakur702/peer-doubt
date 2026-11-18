@@ -3,6 +3,6 @@ import { requireRole } from '@/lib/session';
 
 export default async function Layout({ children }) {
     const { error, status } = await requireRole();
-    if (error) redirect(status === 401 ? '/login' : '/doubts/mine');
+    if (error) redirect(status === 401 ? '/login' : '/access-denied');
     return <div className="mx-auto max-w-4xl px-5 py-8">{children}</div>;
 }

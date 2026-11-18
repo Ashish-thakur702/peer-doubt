@@ -4,14 +4,15 @@ import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
 import Doubt from '@/models/Doubt';
 import ModerationLog from '@/models/ModerationLog';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/session';
 import { notifyUsers } from '@/lib/notifications';
 import { validObjectId } from '@/lib/moderation';
+import { getModerationAnswerFilter, getModerationDoubtFilter } from '@/lib/auth/scope.mjs';
 
 const schema = z.object({ note: z.string().trim().min(3).max(1000) });
 
 export async function PATCH(req, { params }) {
-    const { session, error, status } = await requireRole('faculty');
+    const { session, user, error, status } = await requirePermission('canReconsiderRejected');
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
     if (!validObjectId(id)) return Response.json({ msg: 'Answer not found' }, { status: 404 });
@@ -25,15 +26,16 @@ export async function PATCH(req, { params }) {
         transaction = await mongoose.startSession();
         let result;
         await transaction.withTransaction(async () => {
-            const answer = await Answer.findOne({ _id: id, status: 'REJECTED' }).session(transaction).lean();
+            const answerFilter = await getModerationAnswerFilter(user, { Doubt }, id);
+            const answer = await Answer.findOne({ ...answerFilter, status: 'REJECTED' }).session(transaction).lean();
             if (!answer) throw Object.assign(new Error('Only rejected answers can be reconsidered'), { status: 409 });
             const doubt = await Doubt.findOneAndUpdate(
-                { _id: answer.doubt, status: { $in: ['CLAIMED', 'ANSWERED'] } },
+                { _id: answer.doubt, ...getModerationDoubtFilter(user), status: { $in: ['CLAIMED', 'ANSWERED'] } },
                 { $set: { status: 'ANSWERED' } }, { new: true, session: transaction }
             );
             if (!doubt) throw Object.assign(new Error('The related doubt is no longer available for review'), { status: 409 });
             const updated = await Answer.findOneAndUpdate(
-                { _id: id, status: 'REJECTED' },
+                { _id: id, doubt: answer.doubt, status: 'REJECTED' },
                 { $set: { status: 'REVISION_REQUESTED' }, $push: { moderationHistory: { moderator: session.user.id, action: 'RECONSIDERED', reason: parsed.data.note } } },
                 { new: true, session: transaction }
             );

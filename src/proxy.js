@@ -7,27 +7,12 @@ export async function proxy(req) {
 
     if (!token) {
         const url = new URL('/login', req.url);
-        url.searchParams.set('callbackUrl', pathname);
+        url.searchParams.set('callbackUrl', `${pathname}${req.nextUrl.search}`);
         return NextResponse.redirect(url);
     }
 
-    if (
-        pathname.startsWith('/moderation') &&
-        !token.roles?.some((r) => ['cr', 'faculty'].includes(r))
-    ) {
-        return NextResponse.redirect(new URL('/doubts/mine', req.url));
-    }
-
-    if (pathname.startsWith('/admin') && !token.roles?.includes('admin')) {
-        return NextResponse.redirect(new URL('/doubts/mine', req.url));
-    }
-
-    const canOpenHelperProfile =
-        pathname === '/helper/profile' && token.roles?.includes('student');
-    if (pathname.startsWith('/helper') && !token.roles?.includes('helper') && !canOpenHelperProfile) {
-        return NextResponse.redirect(new URL('/doubts/mine', req.url));
-    }
-
+    // Role checks happen in server layouts and API guards against MongoDB.
+    // A token is only used here to detect sign-in, never to authorize a role.
     return NextResponse.next();
 }
 

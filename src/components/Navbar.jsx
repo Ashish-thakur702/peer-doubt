@@ -6,6 +6,7 @@ import { useSyncExternalStore } from 'react';
 import { useEffect, useState } from 'react';
 import { useTheme } from '@/components/Providers';
 import { getNavigationLinks } from '@/lib/navigation.mjs';
+import { roleLabel, getPrimaryRole } from '@/lib/auth/roles.mjs';
 
 const subscribeToNothing = () => () => {};
 const getClientReady = () => true;
@@ -58,8 +59,12 @@ export default function Navbar() {
     const pathname = usePathname();
     const { theme, toggleTheme } = useTheme();
     const [unread, setUnread] = useState(0);
+    const [freshRoleState, setFreshRoleState] = useState(null);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
-    const roles = session?.user?.roles || [];
+    const roles = freshRoleState && freshRoleState.userId === session?.user?.id
+        ? freshRoleState.roles
+        : (session?.user?.roles || (session?.user?.role ? [session.user.role] : []));
+    const currentRole = session ? getPrimaryRole(roles) : null;
     const links = session ? getNavigationLinks(roles) : [];
     const themeLabel = themeReady ? `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme` : 'Change appearance';
     const themeIcon = themeReady ? (theme === 'dark' ? 'sun' : 'moon') : 'moon';
@@ -81,6 +86,20 @@ export default function Navbar() {
         const timer = setInterval(refresh, 60000);
         return () => { active = false; clearInterval(timer); };
     }, [session]);
+
+    useEffect(() => {
+        if (!session?.user?.id) {
+            return undefined;
+        }
+        let active = true;
+        fetch('/api/auth/me').then(async (response) => {
+            const data = await response.json();
+            if (active) setFreshRoleState({ userId: session.user.id, roles: response.ok ? data.roles || [] : [] });
+        }).catch(() => {
+            if (active) setFreshRoleState({ userId: session.user.id, roles: [] });
+        });
+        return () => { active = false; };
+    }, [session?.user?.id, pathname]);
 
     return (
         <header className="app-navbar sticky top-0 z-30">
@@ -127,6 +146,7 @@ export default function Navbar() {
                                     <div className="border-b border-rule px-3 py-2">
                                         <p className="text-xs font-semibold text-ink">Signed in as</p>
                                         <p className="mt-0.5 max-w-44 truncate text-xs text-graphite">{session.user.email || session.user.name}</p>
+                                        <span className="mt-2 inline-flex rounded-full bg-marker px-2 py-0.5 text-[11px] font-semibold text-ink">{roleLabel(currentRole)}</span>
                                     </div>
                                     <button type="button" role="menuitem" className="user-menu-item" onClick={() => signOut({ callbackUrl: '/login' })}>
                                         <span>Log out</span><span aria-hidden="true">↗</span>

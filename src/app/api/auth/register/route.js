@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
+import { publicRegistrationFields } from '@/lib/auth/public-registration.mjs';
 
 const schema = z.object({
     name: z.string().trim().min(2).max(100),
@@ -29,7 +30,7 @@ export async function POST(req) {
             return Response.json({ msg: 'Email already registered' }, { status: 409 });
 
         const passwordHash = await bcrypt.hash(password, 10);
-        await User.create({ name, email: normalizedEmail, passwordHash });
+        await User.create(publicRegistrationFields({ name, email: normalizedEmail, passwordHash }));
         return Response.json({ msg: 'Registered' }, { status: 201 });
     } catch (err) {
         if (err?.code === 11000)

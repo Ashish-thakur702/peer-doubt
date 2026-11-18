@@ -8,11 +8,13 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --test",
+    "typecheck": "tsc --noEmit -p tsconfig.rbac.json",
     "db:init": "node --env-file=.env.local scripts/initialize-database.mjs",
     "db:verify:module3": "node --env-file=.env.local scripts/verify-module3-persistence.mjs",
     "db:backup:sample": "node --env-file=.env.local scripts/backup-atlas-sample-mflix.mjs --confirm-backup",
     "db:drop:sample": "node --env-file=.env.local scripts/drop-sample-mflix.mjs",
     "seed:dev": "node --env-file=.env.local scripts/seed-development.mjs",
+    "seed:rbac-users": "node --env-file=.env.local scripts/seed-rbac-users.mjs",
     "cleanup:dev": "node --env-file=.env.local scripts/cleanup-development.mjs"
   },
   "dependencies": {
@@ -29,6 +31,7 @@
     "@tailwindcss/turbopack": "4.3.3",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3"
   }
 }

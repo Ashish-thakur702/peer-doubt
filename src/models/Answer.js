@@ -41,5 +41,6 @@ const answerSchema = new mongoose.Schema(
 
 answerSchema.index({ status: 1, createdAt: -1 });
 answerSchema.index({ doubt: 1, createdAt: 1 });
+answerSchema.index({ status: 1, doubt: 1, createdAt: -1 });
 
 export default mongoose.models.Answer || mongoose.model('Answer', answerSchema);

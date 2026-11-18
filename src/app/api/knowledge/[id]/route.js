@@ -6,10 +6,12 @@ import KnowledgeBookmark from '@/models/KnowledgeBookmark';
 import ModerationLog from '@/models/ModerationLog';
 import { z } from 'zod';
 import { validObjectId } from '@/lib/moderation';
-import { requireRole } from '@/lib/session';
+import { requireRole, requirePermission } from '@/lib/session';
+import { hasPermission } from '@/lib/auth/roles.mjs';
+import { getModerationCourses } from '@/lib/auth/scope.mjs';
 
 export async function GET(_req, { params }) {
-    const { session, error, status } = await requireRole();
+    const { session, user, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
     if (!validObjectId(id)) return Response.json({ msg: 'Knowledge entry not found' }, { status: 404 });
@@ -18,7 +20,7 @@ export async function GET(_req, { params }) {
     if (!entry) return Response.json({ msg: 'Knowledge entry not found' }, { status: 404 });
     const answer = await Answer.findOne({ _id: entry.answer, status: 'VERIFIED' }).select('content body helper createdAt flaggedForReview').populate('helper', 'name').lean();
     if (!answer) return Response.json({ msg: 'Knowledge entry not found' }, { status: 404 });
-    const canReviewFlagged = session.user.roles?.some((role) => ['cr', 'faculty', 'admin'].includes(role));
+    const canReviewFlagged = hasPermission(session.user, 'canModerate');
     if ((answer.flaggedForReview || entry.doubt?.flaggedForReview || ['DUPLICATE', 'REJECTED'].includes(entry.doubt?.status)) && !canReviewFlagged)
         return Response.json({ msg: 'Knowledge entry not found' }, { status: 404 });
     const [viewed, bookmarked] = await Promise.all([
@@ -35,13 +37,16 @@ export async function GET(_req, { params }) {
     const answerIds = new Set(validAnswers.map(String));
     const doubtIds = new Set(validDoubts.map(String));
     const related = candidates.filter((item) => answerIds.has(item.answer.toString()) && doubtIds.has(item.doubt.toString()));
-    return Response.json({ ...entry, viewCount: viewed.viewCount, bookmarked: Boolean(bookmarked), canArchive: session.user.roles?.some((role) => ['faculty', 'admin'].includes(role)), answer: { ...answer, content: answer.content || answer.body || '' }, related });
+    const archiveCourses = getModerationCourses(user);
+    const canArchive = hasPermission(session.user, 'canArchiveKnowledge')
+        && (archiveCourses === null || archiveCourses.includes(entry.course));
+    return Response.json({ ...entry, viewCount: viewed.viewCount, bookmarked: Boolean(bookmarked), canArchive, answer: { ...answer, content: answer.content || answer.body || '' }, related });
 }
 
 const archiveSchema = z.object({ reason: z.string().trim().min(3).max(1000) });
 
 export async function PATCH(req, { params }) {
-    const { session, error, status } = await requireRole('faculty', 'admin');
+    const { session, user, error, status } = await requirePermission('canArchiveKnowledge');
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
     if (!validObjectId(id)) return Response.json({ msg: 'Knowledge entry not found' }, { status: 404 });
@@ -50,8 +55,9 @@ export async function PATCH(req, { params }) {
     const parsed = archiveSchema.safeParse(body);
     if (!parsed.success) return Response.json({ msg: parsed.error.issues[0].message }, { status: 400 });
     await connectDB();
+    const courses = getModerationCourses(user);
     const entry = await KnowledgeEntry.findOneAndUpdate(
-        { _id: id, $or: [{ status: 'ACTIVE' }, { status: { $exists: false } }] },
+        { _id: id, ...(courses === null ? {} : { course: { $in: courses } }), $or: [{ status: 'ACTIVE' }, { status: { $exists: false } }] },
         { $set: { status: 'ARCHIVED', archivedBy: session.user.id, archivedAt: new Date(), archiveReason: parsed.data.reason } },
         { new: true }
     ).lean();

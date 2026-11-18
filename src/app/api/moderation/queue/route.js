@@ -5,10 +5,11 @@ import Report from '@/models/Report';
 import User from '@/models/User';
 import { COURSES } from '@/lib/courses';
 import { parsePagination } from '@/lib/moderation';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/session';
+import { getModerationDoubtFilter, getModerationDoubtIds, getModerationReportFilter } from '@/lib/auth/scope.mjs';
 
 export async function GET(req) {
-    const { error, status } = await requireRole('cr', 'faculty');
+    const { user, error, status } = await requirePermission('canModerate');
     if (error) return Response.json({ msg: error }, { status });
     await connectDB();
 
@@ -18,7 +19,7 @@ export async function GET(req) {
     if (!['answers', 'reports'].includes(type)) return Response.json({ msg: 'Unknown queue type' }, { status: 400 });
 
     if (type === 'reports') {
-        const filter = { status: url.searchParams.get('status') || 'OPEN' };
+        const filter = { ...await getModerationReportFilter(user, { Doubt, Answer }), status: url.searchParams.get('status') || 'OPEN' };
         const [items, total] = await Promise.all([
             Report.find(filter).populate('reporter', 'name').sort({ createdAt: 1 }).skip(skip).limit(limit).lean(),
             Report.countDocuments(filter),
@@ -39,14 +40,19 @@ export async function GET(req) {
     const q = url.searchParams.get('q')?.trim().slice(0, 80);
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
-    const doubtFilter = {};
+    const doubtFilter = getModerationDoubtFilter(user);
+    const scopedCourses = user.roles.includes('admin') ? null : (doubtFilter.course?.$in || []);
     if (course && Object.hasOwn(COURSES, course)) doubtFilter.course = course;
     if (topic) doubtFilter.topic = topic;
     if (q) doubtFilter.$text = { $search: q };
     if (course && !Object.hasOwn(COURSES, course)) return Response.json({ msg: 'Unknown course' }, { status: 400 });
-    const doubtIds = course || topic || q ? (await Doubt.find(doubtFilter).select('_id').limit(2000).lean()).map((doubt) => doubt._id) : null;
+    if (course && scopedCourses && !scopedCourses.includes(course)) return Response.json({ msg: 'This course is outside your moderation scope' }, { status: 403 });
+    const filterDoubtIds = course || topic || q
+        ? (await Doubt.find(doubtFilter).select('_id').limit(2000).lean()).map((doubt) => doubt._id)
+        : await getModerationDoubtIds(user, Doubt);
     const filters = [];
-    if (doubtIds) filters.push({ doubt: { $in: doubtIds } });
+    if (filterDoubtIds !== null) filter.doubt = { $in: filterDoubtIds };
+    if (course || topic || q) filters.push({ doubt: { $in: filterDoubtIds || [] } });
     if (q) {
         const helpers = await User.find({ $text: { $search: q } }).select('_id').limit(200).lean();
         filters.push({ helper: { $in: helpers.map((helper) => helper._id) } });
@@ -68,5 +74,5 @@ export async function GET(req) {
             .sort({ createdAt: 1 }).skip(skip).limit(limit).lean(),
         Answer.countDocuments(filter),
     ]);
-    return Response.json({ items, pagination: { page, limit, total, pages: Math.ceil(total / limit) }, filters: { courses: Object.keys(COURSES), topics: course ? (COURSES[course] || []) : [...new Set(Object.values(COURSES).flat())] } });
+    return Response.json({ items, pagination: { page, limit, total, pages: Math.ceil(total / limit) }, filters: { courses: scopedCourses || Object.keys(COURSES), topics: course ? (COURSES[course] || []) : [...new Set(Object.values(COURSES).flat())] } });
 }

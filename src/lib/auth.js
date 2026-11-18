@@ -2,17 +2,19 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
+import { canSignInAs } from '@/lib/auth/login-role.mjs';
 
 export const authOptions = {
     session: { strategy: 'jwt' },
     pages: { signIn: '/login' },
     providers: [
         CredentialsProvider({
-            credentials: { email: {}, password: {} },
+            credentials: { email: {}, password: {}, loginAs: {} },
             async authorize(credentials) {
                 const email = credentials?.email?.trim().toLowerCase();
                 const password = credentials?.password;
-                if (!email || typeof password !== 'string' || !password) return null;
+                const loginAs = credentials?.loginAs;
+                if (!email || typeof password !== 'string' || !password || !loginAs) return null;
                 try {
                     await connectDB();
                 } catch (error) {
@@ -23,10 +25,10 @@ export const authOptions = {
                     throw new Error('Authentication database unavailable');
                 }
                 const user = await User.findOne({ email });
-                if (!user?.passwordHash || user.isSuspended) return null;
+                if (!user?.passwordHash || user.isSuspended || user.status === 'suspended') return null;
                 const ok = await bcrypt.compare(password, user.passwordHash);
-                if (!ok) return null;
-                return { id: user._id.toString(), name: user.name, email: user.email, roles: user.roles };
+                if (!ok || !canSignInAs(user, loginAs)) return null;
+                return { id: user._id.toString(), name: user.name, email: user.email, role: user.role, roles: user.roles, status: user.status || 'active' };
             },
         }),
     ],
@@ -34,17 +36,25 @@ export const authOptions = {
         async jwt({ token, user, trigger }) {
             if (user) {
                 token.id = user.id;
+                token.role = user.role;
                 token.roles = user.roles;
+                token.status = user.status || 'active';
             } else if (trigger === 'update' && token.id) {
                 await connectDB();
-                const currentUser = await User.findById(token.id).select('roles').lean();
-                if (currentUser) token.roles = currentUser.roles || [];
+                const currentUser = await User.findById(token.id).select('role roles status isSuspended').lean();
+                if (currentUser) {
+                    token.role = currentUser.role;
+                    token.roles = currentUser.roles || [currentUser.role || 'student'];
+                    token.status = currentUser.status || (currentUser.isSuspended ? 'suspended' : 'active');
+                }
             }
             return token;
         },
         async session({ session, token }) {
             session.user.id = token.id;
+            session.user.role = token.role || 'student';
             session.user.roles = token.roles;
+            session.user.status = token.status || 'active';
             return session;
         },
     },
