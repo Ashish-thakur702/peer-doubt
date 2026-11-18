@@ -5,12 +5,13 @@ import Doubt from '@/models/Doubt';
 import Report from '@/models/Report';
 import { recordModerationAction, validObjectId } from '@/lib/moderation';
 import { notifyUsers } from '@/lib/notifications';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/session';
+import { getModerationReportFilter } from '@/lib/auth/scope.mjs';
 
 const schema = z.object({ decision: z.enum(['RESOLVE', 'DISMISS', 'FLAG']), note: z.string().trim().max(1000).optional().default('') });
 
 export async function PATCH(req, { params }) {
-    const { session, error, status } = await requireRole('cr', 'faculty');
+    const { session, user, error, status } = await requirePermission('canReviewReports');
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
     if (!validObjectId(id)) return Response.json({ msg: 'Report not found' }, { status: 404 });
@@ -20,7 +21,8 @@ export async function PATCH(req, { params }) {
     if (!parsed.success) return Response.json({ msg: parsed.error.issues[0].message }, { status: 400 });
 
     await connectDB();
-    const report = await Report.findById(id);
+    const scopeFilter = await getModerationReportFilter(user, { Doubt, Answer });
+    const report = await Report.findOne({ _id: id, ...scopeFilter });
     if (!report) return Response.json({ msg: 'Report not found' }, { status: 404 });
     if (report.status !== 'OPEN') return Response.json({ msg: 'This report has already been reviewed' }, { status: 409 });
 
@@ -28,7 +30,7 @@ export async function PATCH(req, { params }) {
         const alreadyFlagged = report.decisionHistory.some((entry) => entry.action === 'FLAGGED');
         if (alreadyFlagged) return Response.json({ ok: true, status: 'OPEN', flagged: true });
         const updated = await Report.findOneAndUpdate(
-            { _id: id, status: 'OPEN', 'decisionHistory.action': { $ne: 'FLAGGED' } },
+            { _id: id, ...scopeFilter, status: 'OPEN', 'decisionHistory.action': { $ne: 'FLAGGED' } },
             { $set: { handledBy: session.user.id, decisionNote: parsed.data.note }, $push: { decisionHistory: { moderator: session.user.id, action: 'FLAGGED', reason: parsed.data.note } } },
             { new: true }
         );
@@ -51,7 +53,7 @@ export async function PATCH(req, { params }) {
 
     const nextStatus = parsed.data.decision === 'RESOLVE' ? 'RESOLVED' : 'DISMISSED';
     const updated = await Report.findOneAndUpdate(
-        { _id: id, status: 'OPEN' },
+        { _id: id, ...scopeFilter, status: 'OPEN' },
         {
             $set: { status: nextStatus, handledBy: session.user.id, decisionNote: parsed.data.note, resolvedAt: new Date() },
             $push: { decisionHistory: { moderator: session.user.id, action: nextStatus, reason: parsed.data.note } },

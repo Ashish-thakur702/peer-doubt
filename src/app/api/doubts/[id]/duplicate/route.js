@@ -4,12 +4,13 @@ import connectDB from '@/lib/db';
 import Doubt from '@/models/Doubt';
 import { recordModerationAction, validObjectId } from '@/lib/moderation';
 import { notifyUsers } from '@/lib/notifications';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/session';
+import { getModerationDoubtFilter } from '@/lib/auth/scope.mjs';
 
 const schema = z.object({ decision: z.enum(['CONFIRM', 'DISMISS']), originalDoubtId: z.string(), reason: z.string().trim().max(1000).optional().default('') });
 
 export async function PATCH(req, { params }) {
-    const { session, error, status } = await requireRole('cr', 'faculty');
+    const { session, user, error, status } = await requirePermission('canMarkDuplicate');
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
     if (!validObjectId(id)) return Response.json({ msg: 'Doubt not found' }, { status: 404 });
@@ -27,10 +28,12 @@ export async function PATCH(req, { params }) {
         let result;
         await transaction.withTransaction(async () => {
             const [candidate, original] = await Promise.all([
-                Doubt.findById(id).session(transaction),
-                Doubt.findById(parsed.data.originalDoubtId).session(transaction),
+                Doubt.findOne({ _id: id, ...getModerationDoubtFilter(user) }).session(transaction),
+                Doubt.findOne({ _id: parsed.data.originalDoubtId, ...getModerationDoubtFilter(user) }).session(transaction),
             ]);
             if (!candidate || !original) throw Object.assign(new Error('Doubt not found'), { status: 404 });
+            if (candidate.course !== original.course || candidate.topic !== original.topic)
+                throw Object.assign(new Error('The retained original must have the same course and topic'), { status: 400 });
             if (original.status === 'DUPLICATE' || original.status === 'REJECTED')
                 throw Object.assign(new Error('Original doubt is unavailable or already linked as a duplicate'), { status: 409 });
 
@@ -40,7 +43,7 @@ export async function PATCH(req, { params }) {
                 if (candidate.status === 'REJECTED') throw Object.assign(new Error('A rejected doubt cannot be linked as a duplicate'), { status: 409 });
                 if (candidate.status !== 'DUPLICATE') {
                     const changed = await Doubt.findOneAndUpdate(
-                        { _id: id, status: { $nin: ['DUPLICATE', 'REJECTED'] } },
+                        { _id: id, course: candidate.course, status: { $nin: ['DUPLICATE', 'REJECTED'] } },
                         { $set: { status: 'DUPLICATE', duplicateOf: original._id } },
                         { new: true, session: transaction }
                     );

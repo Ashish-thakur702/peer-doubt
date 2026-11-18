@@ -5,9 +5,9 @@ import Answer from '@/models/Answer';
 import Doubt from '@/models/Doubt';
 import KnowledgeEntry from '@/models/KnowledgeEntry';
 import { recordModerationAction, validObjectId } from '@/lib/moderation';
-import { requireRole } from '@/lib/session';
-import User from '@/models/User';
+import { requirePermission } from '@/lib/session';
 import { notifyUsers } from '@/lib/notifications';
+import { getModerationAnswerFilter } from '@/lib/auth/scope.mjs';
 
 const verifySchema = z.object({ note: z.string().trim().max(1000).optional().default('') });
 const REJECTION_CATEGORIES = {
@@ -32,7 +32,7 @@ class ModerationRequestError extends Error {
 }
 
 export async function moderateAnswer(req, params, action) {
-    const { session, error, status } = await requireRole('cr', 'faculty');
+    const { session, user, error, status } = await requirePermission('canVerifyAnswer');
     if (error) return Response.json({ msg: error }, { status });
 
     const { id } = await params;
@@ -58,7 +58,8 @@ export async function moderateAnswer(req, params, action) {
         transaction = await mongoose.startSession();
         let result;
         await transaction.withTransaction(async () => {
-            const answer = await Answer.findById(id)
+            const answerFilter = await getModerationAnswerFilter(user, { Doubt }, id);
+            const answer = await Answer.findOne(answerFilter)
                 .session(transaction)
                 .populate({ path: 'doubt', options: { session: transaction } });
             if (!answer || !answer.doubt)
@@ -78,7 +79,7 @@ export async function moderateAnswer(req, params, action) {
             const actionAt = new Date();
             if (transitioned) {
                 const updated = await Answer.findOneAndUpdate(
-                    { _id: id, status: answer.status, $or: [{ reviewAssignedTo: null }, { reviewAssignedTo: session.user.id }] },
+                    { _id: id, doubt: answer.doubt._id, status: answer.status, $or: [{ reviewAssignedTo: null }, { reviewAssignedTo: session.user.id }] },
                     {
                         $set: { status: action, ...(action === 'VERIFIED' ? { verifiedBy: session.user.id } : {}) },
                         $push: {

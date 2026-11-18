@@ -24,8 +24,17 @@ export async function GET() {
     if (error) return Response.json({ msg: error }, { status });
 
     await connectDB();
-    const user = await User.findById(session.user.id).select('helperProfile').lean();
-    return Response.json(user?.helperProfile ?? { courses: [], topics: [], isWilling: false });
+    const user = await User.findById(session.user.id).select('helperProfile isHelper courses availability').lean();
+    const courses = user?.courses?.length ? user.courses : user?.helperProfile?.courses || [];
+    const availability = Boolean(user?.availability || user?.helperProfile?.availability || user?.helperProfile?.isWilling);
+    return Response.json({
+        ...(user?.helperProfile || {}),
+        courses,
+        topics: user?.helperProfile?.topics || [],
+        isHelper: Boolean(user?.isHelper || user?.helperProfile?.isHelper || availability),
+        availability,
+        isWilling: availability,
+    });
 }
 
 export async function PATCH(req) {
@@ -55,15 +64,22 @@ export async function PATCH(req) {
     await connectDB();
     const update = {
         $set: {
+            isHelper: isWilling,
+            courses,
+            availability: isWilling,
             'helperProfile.courses': courses,
             'helperProfile.topics': topics,
             'helperProfile.isWilling': isWilling,
+            'helperProfile.isHelper': isWilling,
+            'helperProfile.availability': isWilling,
+            role: isWilling ? 'helper' : 'student',
         },
     };
-    if (isWilling) update.$addToSet = { roles: 'helper' };
+    if (isWilling) update.$addToSet = { roles: { $each: ['student', 'helper'] } };
+    else update.$pull = { roles: 'helper' };
 
     const user = await User.findByIdAndUpdate(session.user.id, update, { new: true })
-        .select('roles helperProfile')
+        .select('role roles helperProfile isHelper availability')
         .lean();
-    return Response.json({ msg: 'Saved', helperEnabled: user?.roles?.includes('helper') || false });
+    return Response.json({ msg: 'Saved', helperEnabled: Boolean(user?.isHelper && user?.availability), roles: user?.roles || [] });
 }

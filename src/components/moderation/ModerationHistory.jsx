@@ -14,6 +14,11 @@ const LABELS = {
     DUPLICATE_DISMISSED: 'Dismissed duplicate suggestion',
     KNOWLEDGE_ARCHIVED: 'Archived knowledge',
     USER_ACCESS_UPDATED: 'Updated user access',
+    USER_ROLE_CHANGED: 'Changed user role',
+    USER_COURSES_ASSIGNED: 'Assigned moderation courses',
+    USER_DEPARTMENT_UPDATED: 'Updated faculty department',
+    USER_SUSPENDED: 'Suspended account',
+    USER_REACTIVATED: 'Reactivated account',
 };
 
 export default function ModerationHistory() {

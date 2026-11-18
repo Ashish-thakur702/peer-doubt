@@ -7,7 +7,7 @@ import AuthShell from '@/components/AuthShell';
 
 export default function Login() {
     const router = useRouter();
-    const [form, setForm] = useState({ email: '', password: '' });
+    const [form, setForm] = useState({ email: '', password: '', loginAs: 'student' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -19,11 +19,18 @@ export default function Login() {
             const res = await signIn('credentials', { ...form, redirect: false });
             if (res?.error) {
                 setError(res.error === 'CredentialsSignin'
-                    ? 'Email or password is incorrect.'
+                    ? 'Email, password, or account type is incorrect.'
                     : 'Sign-in is temporarily unavailable. Check your connection and try again shortly.');
                 return;
             }
-            router.push('/doubts/mine');
+            const callbackUrl = new URLSearchParams(window.location.search).get('callbackUrl');
+            const defaultDestination = form.loginAs === 'admin'
+                ? '/admin/users'
+                : form.loginAs === 'academic'
+                    ? '/moderation'
+                    : '/doubts/mine';
+            const nextUrl = callbackUrl?.startsWith('/') && !callbackUrl.startsWith('//') ? callbackUrl : defaultDestination;
+            router.push(nextUrl);
             router.refresh();
         } catch {
             setError('Could not reach the sign-in service. Check your connection and try again.');
@@ -44,6 +51,15 @@ export default function Login() {
         >
             <form onSubmit={onSubmit} className="space-y-4">
                 {error && <p role="alert" className="text-sm text-margin">{error}</p>}
+                <div>
+                    <label htmlFor="loginAs" className="mb-1 block text-sm font-medium">Log in as</label>
+                    <select id="loginAs" className="field" value={form.loginAs} onChange={set('loginAs')}>
+                        <option value="student">Student / student helper</option>
+                        <option value="academic">CR / Faculty</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <p className="mt-1.5 text-xs text-graphite">Helpers sign in with their student or faculty account.</p>
+                </div>
                 <div>
                     <label htmlFor="email" className="mb-1 block text-sm font-medium">College email</label>
                     <input id="email" type="email" className="field" autoComplete="email" onChange={set('email')} required />

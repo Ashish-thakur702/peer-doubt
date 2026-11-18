@@ -12,9 +12,10 @@ export async function POST(_req, { params }) {
     if (!mongoose.isValidObjectId(id)) return Response.json({ msg: 'Not found' }, { status: 404 });
 
     await connectDB();
-    const me = await User.findById(session.user.id).select('helperProfile').lean();
-    const courses = me?.helperProfile?.courses || [];
-    if (!me?.helperProfile?.isWilling || courses.length === 0)
+    const me = await User.findById(session.user.id).select('courses availability isHelper helperProfile').lean();
+    const courses = me?.courses?.length ? me.courses : me?.helperProfile?.courses || [];
+    const available = me?.availability || me?.helperProfile?.availability || me?.helperProfile?.isWilling;
+    if (!(me?.isHelper || me?.helperProfile?.isHelper || me?.helperProfile?.isWilling) || !available || courses.length === 0)
         return Response.json({ msg: 'Turn on helper availability first' }, { status: 403 });
 
     const doubt = await Doubt.findOneAndUpdate(

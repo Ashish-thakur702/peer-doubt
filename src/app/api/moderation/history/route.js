@@ -2,19 +2,22 @@ import connectDB from '@/lib/db';
 import ModerationLog from '@/models/ModerationLog';
 import User from '@/models/User';
 import { parsePagination, validObjectId } from '@/lib/moderation';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/session';
+import Answer from '@/models/Answer';
+import Doubt from '@/models/Doubt';
+import { getModerationLogFilter } from '@/lib/auth/scope.mjs';
 
-const ACTIONS = ['VERIFIED', 'REJECTED', 'REVISION_REQUESTED', 'RECONSIDERED', 'RESOLVED', 'DISMISSED', 'FLAGGED', 'DUPLICATE_CONFIRMED', 'DUPLICATE_DISMISSED', 'KNOWLEDGE_ARCHIVED', 'USER_ACCESS_UPDATED'];
+const ACTIONS = ['VERIFIED', 'REJECTED', 'REVISION_REQUESTED', 'RECONSIDERED', 'RESOLVED', 'DISMISSED', 'FLAGGED', 'DUPLICATE_CONFIRMED', 'DUPLICATE_DISMISSED', 'KNOWLEDGE_ARCHIVED', 'USER_ACCESS_UPDATED', 'USER_ROLE_CHANGED', 'USER_COURSES_ASSIGNED', 'USER_DEPARTMENT_UPDATED', 'USER_SUSPENDED', 'USER_REACTIVATED'];
 
 export async function GET(req) {
-    const { session, error, status } = await requireRole('cr', 'faculty', 'admin');
+    const { session, user, error, status } = await requirePermission('canModerate');
     if (error) return Response.json({ msg: error }, { status });
     await connectDB();
 
     const url = new URL(req.url);
     const { page, limit, skip } = parsePagination(url.searchParams);
     const type = url.searchParams.get('type');
-    const filter = {};
+    const filter = { ...await getModerationLogFilter(user, { Doubt, Answer }) };
     const types = ['answer', 'doubt', 'report', 'knowledge', 'user'];
     if (type && !types.includes(type)) return Response.json({ msg: 'Unknown history type' }, { status: 400 });
     if (type === 'user' && !session.user.roles.includes('admin')) return Response.json({ msg: 'Forbidden' }, { status: 403 });
@@ -49,7 +52,7 @@ export async function GET(req) {
     const [items, total, moderatorIds] = await Promise.all([
         ModerationLog.find(filter).populate('moderator', 'name').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
         ModerationLog.countDocuments(filter),
-        ModerationLog.distinct('moderator'),
+        ModerationLog.distinct('moderator', filter),
     ]);
     const moderators = await User.find({ _id: { $in: moderatorIds } }).select('name').sort({ name: 1 }).lean();
     return Response.json({ items, moderators, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });

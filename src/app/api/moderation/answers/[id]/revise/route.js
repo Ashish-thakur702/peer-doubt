@@ -2,16 +2,18 @@ import mongoose from 'mongoose';
 import { z } from 'zod';
 import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
+import Doubt from '@/models/Doubt';
 import ModerationLog from '@/models/ModerationLog';
-import { requireRole } from '@/lib/session';
+import { requirePermission } from '@/lib/session';
 import { notifyUsers } from '@/lib/notifications';
 import { validObjectId } from '@/lib/moderation';
+import { getModerationAnswerFilter } from '@/lib/auth/scope.mjs';
 
 const schema = z.object({ note: z.string().trim().min(3).max(1000) });
 const PENDING = ['PENDING', 'SUBMITTED', 'PENDING_REVIEW', 'ACCEPTED'];
 
 export async function PATCH(req, { params }) {
-    const { session, error, status } = await requireRole('cr', 'faculty');
+    const { session, user, error, status } = await requirePermission('canModerate');
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
     if (!validObjectId(id)) return Response.json({ msg: 'Answer not found' }, { status: 404 });
@@ -26,13 +28,14 @@ export async function PATCH(req, { params }) {
         transaction = await mongoose.startSession();
         let result;
         await transaction.withTransaction(async () => {
-            const answer = await Answer.findById(id).session(transaction).populate({ path: 'doubt', options: { session: transaction } });
+            const answerFilter = await getModerationAnswerFilter(user, { Doubt }, id);
+            const answer = await Answer.findOne(answerFilter).session(transaction).populate({ path: 'doubt', options: { session: transaction } });
             if (!answer || !answer.doubt) throw Object.assign(new Error('Answer not found'), { status: 404 });
             if (answer.helper.toString() === session.user.id) throw Object.assign(new Error('You cannot review your own answer'), { status: 403 });
             if (!PENDING.includes(answer.status)) throw Object.assign(new Error('Only pending answers can be sent back'), { status: 409 });
             if (answer.reviewAssignedTo && answer.reviewAssignedTo.toString() !== session.user.id) throw Object.assign(new Error('This review is assigned to another moderator'), { status: 409 });
             const changed = await Answer.findOneAndUpdate(
-                { _id: id, status: answer.status, $or: [{ reviewAssignedTo: null }, { reviewAssignedTo: session.user.id }] },
+                { _id: id, doubt: answer.doubt._id, status: answer.status, $or: [{ reviewAssignedTo: null }, { reviewAssignedTo: session.user.id }] },
                 { $set: { status: 'REVISION_REQUESTED' }, $push: { moderationHistory: { moderator: session.user.id, action: 'REVISION_REQUESTED', reason: parsed.data.note } } },
                 { new: true, session: transaction }
             );

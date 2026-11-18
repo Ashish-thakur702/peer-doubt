@@ -6,7 +6,7 @@ export const metadata = { title: 'Help classmates' };
 
 export default async function HelperPage() {
     const { error, status } = await requireRole('helper');
-    if (error) redirect(status === 401 ? '/login' : '/doubts/mine');
+    if (error) redirect(status === 401 ? '/login' : '/access-denied');
 
     return <HelperWorkspace />;
 }

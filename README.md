@@ -16,7 +16,7 @@ The application selects the existing Atlas database `Doubt`; `MONGODB_DB` takes 
 
 Use a dedicated application database user scoped to `readWrite` on `Doubt`; do not put an Atlas administrator credential in app configuration. The application code cannot change Atlas user roles. Add each developer's current IP to Atlas Network Access; do not use unrestricted public access as the default. Percent-encode special characters in the URI username and password. Never use Atlas credentials as application login credentials.
 
-Public registration creates student accounts only. Students opt into the helper role by selecting at least one course and enabling availability from **Become a helper**. This only grants access to the helper workspace; CR and faculty roles must still be provisioned by an authorized administrator using the existing `roles` field. Do not share an administrator password between developers. Each person signs into the app with their own application account.
+Public registration creates active student accounts only and ignores any client-supplied role. Students opt into helper access by selecting courses and enabling availability from **Become a helper**; helpers retain student abilities. CR and faculty access is provisioned by an administrator. The User model stores an enum `role`, compatible `roles` values, account `status`, helper availability/courses, CR `assignedCourses`, and faculty `department`/course scope. Protected APIs and server layouts reload the current user from MongoDB for each request; session roles are for display only.
 
 Useful checks:
 
@@ -24,12 +24,16 @@ Useful checks:
 npm run db:init
 npm run db:verify:module3 -- --confirm-module3-test
 npm run lint
+npm run typecheck
+npm test
 npm run build
 ```
 
 The Module 3 persistence check is restricted to the configured non-production Atlas `Doubt` database. It creates randomly tagged temporary records, checks ratings, feedback, bookmarks, notification state, report uniqueness, moderation history, revisions, and knowledge publication, then deletes and verifies removal of its records.
 
 The repository does not have a separate integration-test runner. A guarded development seed creates exactly one doubt and pending answer in `Doubt`, using existing student, willing helper, and CR/faculty accounts. It marks both records with `PEER_DOUBT_MODULE3_TEST_001`, aborts on conflicting records, missing accounts, or populated unrelated collections, does not grant roles, and never marks the answer verified automatically.
+
+For isolated RBAC testing, set a local-only `RBAC_TEST_PASSWORD` environment variable and run `npm run seed:rbac-users -- --confirm-rbac-users`. This creates prefixed `unstuck-rbac+<role>@example.test` accounts for student, helper, CR, faculty, and admin with bcrypt-hashed passwords. The script never updates an existing account or deletes data, uses OS as the CR/helper course, and assigns faculty to the configured Computer Science course set. Keep the password local and do not commit it. The script refuses production targets.
 
 ```sh
 npm run seed:dev -- --confirm-dev
@@ -56,7 +60,7 @@ Use the shared `Doubt`, `Answer`, `User`, `Report`, `ModerationLog`, `KnowledgeE
 - A helper with the `helper` role claims an open doubt; the status becomes `CLAIMED` and `assignedHelper` is set.
 - A claimed helper posts `content` to `/api/doubts/:id/answers`. The app creates an `Answer` with status `PENDING` and advances the doubt to `ANSWERED`.
 - The asker may accept a pending answer, recording helper reputation; accepted answers remain eligible for moderator review.
-- CRs and faculty can verify, reject, request correction, and claim pending reviews. Faculty can reconsider rejected answers. Verification moves the doubt to `VERIFIED` and upserts one knowledge entry per answer. Rejection reopens the claim for the assigned helper.
+- CRs, faculty, and admins can verify, reject, request correction, and claim pending reviews, subject to server-side course scope. Faculty and admins can reconsider rejected answers and archive knowledge. Verification moves the doubt to `VERIFIED` and upserts one knowledge entry per answer. Rejection reopens the claim for the assigned helper.
 - Duplicate decisions set the newer doubt to `DUPLICATE` and point `duplicateOf` at the retained original. No doubt or answer is deleted.
 
 The moderation queue also reads legacy answer statuses `SUBMITTED`, `PENDING_REVIEW`, and `ACCEPTED`, and both the legacy `body` and current `content` answer fields. New answers should use `PENDING` and `content`. Moderators must not review their own answers.
@@ -86,7 +90,7 @@ The moderation queue also reads legacy answer statuses `SUBMITTED`, `PENDING_REV
 - `GET /api/helper/analytics`
 - `GET|PATCH /api/admin/users` (administrator only)
 
-Only `cr` and `faculty` can make moderation decisions. Any signed-in user can browse verified knowledge and rate another user's question after an answer is submitted; authors cannot rate their own questions. A person's rating is updated in place, and averages/counts are stored on the doubt. Rejections use a structured reason category and optional explanation. Reports have per-user duplicate-open-report checks and a retained decision history.
+CRs and faculty can make moderation decisions within their assigned courses; admins can moderate across all courses. CR course assignments and faculty department/course scope are applied in database queries. Only admins can manage roles and account status. A signed-in user can browse verified knowledge and rate another user's question after an answer is submitted; authors cannot rate their own questions. A person's rating is updated in place, and averages/counts are stored on the doubt. Rejections use a structured reason category and optional explanation. Reports have per-user duplicate-open-report checks and a retained decision history.
 
 The dashboard reports live moderation counts, average verification time, reports resolved, activity, and verified knowledge by course/topic. Helper analytics use answer and feedback records. Knowledge search supports text, course/topic filters, helpfulness and view sorting; only active entries tied to verified answers appear. Archive actions preserve answer and moderation history. Notifications are user-scoped and refresh by polling.
 
@@ -96,11 +100,11 @@ The dashboard reports live moderation counts, average verification time, reports
 | --- | --- | --- | --- | --- | --- |
 | Ask, report, rate another question, browse/save verified knowledge | Yes | Yes | Yes | Yes | Yes |
 | Submit or revise own requested answer | No | Yes | No | No | No |
-| Verify/reject/request corrections, manage reports and duplicates | No | No | Yes | Yes | No |
-| Reconsider rejected answers and archive knowledge | No | No | No | Yes | Yes |
-| Grant CR/faculty roles or suspend accounts | No | No | No | No | Yes |
+| Verify/reject/request corrections, manage reports and duplicates | No | No | Assigned courses | Department/courses | All courses |
+| Reconsider rejected answers and archive knowledge | No | No | No | Department/courses | All courses |
+| Grant roles, assign courses, or suspend accounts | No | No | No | No | Yes |
 
-Administrator access must be provisioned through trusted database administration; public registration and helper profile APIs cannot grant it. Helper eligibility follows the existing Module 2 opt-in flow.
+The first administrator must be provisioned through a trusted setup path; after that, administrators can grant roles and scope through **User access**. Public registration and helper profile APIs cannot grant CR, faculty, or admin access. Administrators cannot change their own account, and the final active administrator cannot be demoted or suspended. User role, course, department, suspension, and reactivation changes are written to the audit log. Helper eligibility is only granted by the student's opt-in.
 
 ## Themes and interface
 
@@ -116,11 +120,11 @@ The light/dark palette is defined by CSS variables in `src/app/globals.css`. The
 - Feature test seed: not run; the guarded development seed refuses this shared database because it contains populated unmodeled collections.
 - Signed-in end-to-end workflows were not exercised with shared user accounts. The persistence smoke test used no user accounts and left no test records behind.
 
-## Current workspace recheck (2026-11-15)
+## Current RBAC recheck (2026-11-16)
 
-- `npm test`: passed; all 5 tests passed.
+- `npm test`: passed; all 16 unit and guard-contract tests passed.
 - `npm run lint`: passed.
+- `npm run typecheck`: passed for the RBAC policy/scope modules and NextAuth declarations. Most application source remains JavaScript.
 - `npm run build`: passed.
-- `git diff --check`: passed.
-- Unauthenticated local API checks returned 401 for knowledge, moderation, helper claim, doubt submission, and admin routes.
-- The read-only Atlas inventory could not resolve the configured SRV hostname in this workspace (`ETIMEOUT`). No current database inventory or persistence smoke test was completed, and no database records were changed. `MONGODB_DNS_SERVERS` is not configured; keep the existing Atlas resolver setup and retry from a network that can resolve Atlas SRV records.
+- Unauthenticated production API checks returned 401 for auth/me, knowledge, moderation queue/stats, answer verify/reject, reports, admin users, and notifications.
+- Signed-in per-role HTTP/browser walkthrough was not run. This local environment has no `RBAC_TEST_PASSWORD` and no `MONGODB_DNS_SERVERS` override, so the prefixed account seed was not run and no database records were changed.
