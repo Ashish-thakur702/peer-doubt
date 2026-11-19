@@ -28,6 +28,32 @@ npm run typecheck
 npm test
 npm run build
 ```
+## Module 2: Peer Assistance & Answer Submission
+
+Module 2 is responsible for the peer-learning and doubt-resolution workflow of unStuck. It allows students to volunteer as helpers, browse unresolved academic doubts, claim questions they are capable of answering, and submit explanations to help other students understand difficult concepts.
+
+### Key Features
+
+- **Helper Opt-in System:** Students can voluntarily become helpers by selecting the subjects or courses they are comfortable assisting with and enabling their helper availability.
+- **Helper Workspace:** A dedicated interface for helpers to browse open doubts, view relevant academic questions, and manage the doubts they have claimed.
+- **Doubt Claiming:** Helpers can claim open doubts to take responsibility for answering them. The system prevents multiple helpers from claiming the same doubt simultaneously.
+- **Answer Submission:** Assigned helpers can submit explanations and solutions to claimed doubts.
+- **Pending Answer Workflow:** Submitted answers are stored with a pending status, allowing them to proceed to the moderation and verification process.
+- **Student-Helper Integration:** Students retain their normal platform functionality while opting into helping others, encouraging collaborative learning within the community.
+- **Doubt Status Management:** The system updates doubt statuses as they progress from open to claimed and answered, maintaining consistency across the platform.
+
+### Workflow
+
+1. A student opts into helper access and selects the courses they can assist with.
+2. The helper accesses the dedicated workspace and browses available open doubts.
+3. The helper claims a doubt they can confidently answer.
+4. The doubt is assigned to the helper, preventing competing claims.
+5. The helper submits their explanation or solution.
+6. The answer is stored as pending and becomes available for the moderation and verification workflow.
+
+### Objective
+
+The primary objective of Module 2 is to promote peer-to-peer academic learning by connecting students who need help with students who can provide meaningful explanations, while ensuring that submitted answers can be reviewed for accuracy and quality before becoming verified learning resources.
 
 The Module 3 persistence check is restricted to the configured non-production Atlas `Doubt` database. It creates randomly tagged temporary records, checks ratings, feedback, bookmarks, notification state, report uniqueness, moderation history, revisions, and knowledge publication, then deletes and verifies removal of its records.
 
