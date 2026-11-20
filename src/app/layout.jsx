@@ -13,7 +13,7 @@ export default function RootLayout({ children }) {
         <html lang="en" suppressHydrationWarning>
             <head>
                 <script dangerouslySetInnerHTML={{
-                    __html: "try{var t=localStorage.getItem('unstuck-theme');document.documentElement.dataset.theme=t||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}",
+                    __html: "try{var t=localStorage.getItem('unstuck-theme');document.documentElement.dataset.theme=t||'dark'}catch(e){document.documentElement.dataset.theme='dark'}",
                 }} />
             </head>
             <body className="font-sans antialiased">

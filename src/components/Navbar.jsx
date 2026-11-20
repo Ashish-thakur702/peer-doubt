@@ -102,7 +102,7 @@ export default function Navbar() {
     }, [session?.user?.id, pathname]);
 
     return (
-        <header className="app-navbar sticky top-0 z-30">
+        <header className={`app-navbar sticky top-0 z-30 ${session ? 'app-navbar-auth' : 'app-navbar-public'}`}>
             <nav className="mx-auto flex min-h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
                 <Link href="/" className="flex shrink-0 items-center gap-2.5 text-[17px] font-bold tracking-tight">
                     <span className="brand-mark flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold text-white shadow-[0_5px_12px_rgba(103,79,196,0.18)]" aria-hidden="true">uS</span>
@@ -111,7 +111,7 @@ export default function Navbar() {
 
                 {session ? (
                     <>
-                        <div className="ml-3 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-sm sm:ml-5 sm:gap-2">
+                        <div className="app-nav-links ml-3 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-sm sm:ml-5 sm:gap-2">
                             {links.filter((l) => l.href !== '/notifications').map((l) => {
                                 const active = pathname === l.href || pathname.startsWith(`${l.href}/`);
                                 return <Link
@@ -127,7 +127,7 @@ export default function Navbar() {
                                 </Link>;
                             })}
                         </div>
-                        <div className="ml-auto flex shrink-0 items-center gap-1.5 text-sm sm:gap-2">
+                        <div className="app-nav-actions ml-auto flex shrink-0 items-center gap-1.5 text-sm sm:gap-2">
                             <Link href="/notifications" className="nav-icon-button relative" aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ''}`} title="Notifications">
                                 <Icon name="bell" />
                                 {unread > 0 && <span aria-hidden="true" className="notification-dot">{unread > 99 ? '99+' : unread}</span>}

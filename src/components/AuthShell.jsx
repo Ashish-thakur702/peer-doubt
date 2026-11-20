@@ -1,6 +1,6 @@
 export default function AuthShell({ title, hint, eyebrow = 'unStuck · Stuck at Question Three', callout, children, footer }) {
     return (
-        <div className="mx-auto mt-0 max-w-md">
+        <div className="mx-auto mt-0 w-full max-w-[520px]">
             <div className="margin-sheet rounded-md border border-rule border-t-4 border-t-marker bg-sheet px-6 py-8 shadow-[var(--ui-shadow)] sm:py-9 sm:pl-16 sm:pr-8">
                 {eyebrow && (
                     <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-pencil">

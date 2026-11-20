@@ -2,14 +2,14 @@
 import { SessionProvider } from 'next-auth/react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-const ThemeContext = createContext({ theme: 'light', toggleTheme: () => {} });
+const ThemeContext = createContext({ theme: 'dark', toggleTheme: () => {} });
 
 export function useTheme() {
     return useContext(ThemeContext);
 }
 
 export default function Providers({ children }) {
-    const [theme, setTheme] = useState('light');
+    const [theme, setTheme] = useState('dark');
 
     useEffect(() => {
         let active = true;

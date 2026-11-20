@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     // Allow the dev server to be opened from this machine's LAN address.
-    allowedDevOrigins: ['10.35.19.172', '10.36.73.76', '172.26.91.212', '10.36.77.183', 'localhost'],
+    allowedDevOrigins: ['10.35.19.172', '10.36.72.23:3000', '10.36.72.23', 'localhost'],
     async headers() {
         return [{
             source: '/:path*',
