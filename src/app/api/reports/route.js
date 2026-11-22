@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
 import Doubt from '@/models/Doubt';
@@ -15,7 +16,7 @@ const submissionSchema = z.object({
 });
 const REASONS = { INCORRECT: 'Incorrect or misleading content', HARASSMENT: 'Harassment or abuse', SPAM: 'Spam or unrelated content', PRIVACY: 'Privacy concern', DUPLICATE: 'Duplicate question', OTHER: 'Other' };
 
-export async function POST(req) {
+async function handlePOST(req) {
     const { session, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
 
@@ -50,7 +51,7 @@ export async function POST(req) {
     }
 }
 
-export async function GET(req) {
+async function handleGET(req) {
     const { user, error, status } = await requirePermission('canReviewReports');
     if (error) return Response.json({ msg: error }, { status });
     await connectDB();
@@ -85,3 +86,6 @@ export async function GET(req) {
     const items = reports.map((report) => ({ ...report, targetContent: targets.get(report.target.toString()) || null }));
     return Response.json({ items, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
 }
+
+export const POST = withApiErrors(handlePOST, { route: '/api/reports', method: 'POST' });
+export const GET = withApiErrors(handleGET, { route: '/api/reports', method: 'GET' });

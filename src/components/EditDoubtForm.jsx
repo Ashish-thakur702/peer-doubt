@@ -1,4 +1,5 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -22,7 +23,7 @@ export default function EditDoubtForm({ doubt }) {
         setSaving(true);
         setError('');
         try {
-            const response = await fetch(`/api/doubts/${doubt.id}`, {
+            const response = await fetchWithTimeout(`/api/doubts/${doubt.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(form),

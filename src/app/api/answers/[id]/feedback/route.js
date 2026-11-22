@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
 import AnswerFeedback from '@/models/AnswerFeedback';
@@ -8,7 +9,7 @@ import { notifyUsers } from '@/lib/notifications';
 import { requireRole } from '@/lib/session';
 import { validObjectId } from '@/lib/moderation';
 
-export async function GET(_req, { params }) {
+async function handleGET(_req, { params }) {
     const { session, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
@@ -25,7 +26,7 @@ export async function GET(_req, { params }) {
     return Response.json({ helpful, unhelpful, vote: own?.helpful ?? null, canVote: answer.helper.toString() !== session.user.id });
 }
 
-export async function PUT(req, { params }) {
+async function handlePUT(req, { params }) {
     const { session, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
@@ -86,3 +87,6 @@ export async function PUT(req, { params }) {
     ]);
     return Response.json({ helpful, unhelpful, vote: own?.helpful ?? null });
 }
+
+export const GET = withApiErrors(handleGET, { route: '/api/answers/[id]/feedback', method: 'GET' });
+export const PUT = withApiErrors(handlePUT, { route: '/api/answers/[id]/feedback', method: 'PUT' });

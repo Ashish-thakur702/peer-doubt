@@ -14,7 +14,7 @@ function routeFiles(directory) {
 }
 
 test('every non-public API route declares a fresh-session guard or delegates to the shared guarded moderator', () => {
-    const publicRoutes = new Set(['auth/register/route.js', 'auth/[...nextauth]/route.js']);
+    const publicRoutes = new Set(['auth/register/route.js', 'auth/health/route.js', 'auth/[...nextauth]/route.js']);
     const unguarded = routeFiles(root).map((path) => ({ path, source: readFileSync(path, 'utf8') }))
         .filter(({ path, source }) => {
             const route = relative(root, path).replaceAll('\\', '/');

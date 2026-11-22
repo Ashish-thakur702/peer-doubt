@@ -1,4 +1,5 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -12,15 +13,23 @@ export default function AnswerForm({ doubtId }) {
         e.preventDefault();
         setLoading(true);
         setError('');
-        const res = await fetch(`/api/doubts/${doubtId}/answers`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ body }),
-        });
-        const data = await res.json().catch(() => ({}));
-        setLoading(false);
-        if (!res.ok) return setError(data.msg || 'Could not post your answer.');
-        router.refresh();
+        try {
+            const res = await fetchWithTimeout(`/api/doubts/${doubtId}/answers`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ body }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setError(data.msg || 'Could not post your answer.');
+                return;
+            }
+            router.refresh();
+        } catch {
+            setError('Could not reach the server. Check your connection and try again.');
+        } finally {
+            setLoading(false);
+        }
     }
 
     return (

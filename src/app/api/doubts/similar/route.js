@@ -1,9 +1,10 @@
+import { withApiErrors } from '@/lib/api-errors';
 import connectDB from '@/lib/db';
 import Doubt from '@/models/Doubt';
 import { requireRole } from '@/lib/session';
 import { COURSES } from '@/lib/courses';
 
-export async function GET(req) {
+async function handleGET(req) {
     const { error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
 
@@ -29,3 +30,5 @@ export async function GET(req) {
 
     return Response.json(results);
 }
+
+export const GET = withApiErrors(handleGET, { route: '/api/doubts/similar', method: 'GET' });

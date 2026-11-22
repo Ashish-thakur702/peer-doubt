@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import connectDB from '@/lib/db';
 import KnowledgeEntry from '@/models/KnowledgeEntry';
 import KnowledgeBookmark from '@/models/KnowledgeBookmark';
@@ -5,7 +6,7 @@ import { COURSES } from '@/lib/courses';
 import { parsePagination } from '@/lib/moderation';
 import { requireRole } from '@/lib/session';
 
-export async function GET(req) {
+async function handleGET(req) {
     const { session, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
     try {
@@ -71,3 +72,5 @@ export async function GET(req) {
         return Response.json({ msg: 'Could not search verified knowledge. Please try again.' }, { status: 500 });
     }
 }
+
+export const GET = withApiErrors(handleGET, { route: '/api/knowledge', method: 'GET' });

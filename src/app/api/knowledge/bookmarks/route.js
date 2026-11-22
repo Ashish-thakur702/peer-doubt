@@ -1,10 +1,11 @@
+import { withApiErrors } from '@/lib/api-errors';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db';
 import KnowledgeBookmark from '@/models/KnowledgeBookmark';
 import { parsePagination } from '@/lib/moderation';
 import { requireRole } from '@/lib/session';
 
-export async function GET(req) {
+async function handleGET(req) {
     const { session, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
     await connectDB();
@@ -50,3 +51,5 @@ export async function GET(req) {
     const total = result?.total?.[0]?.value || 0;
     return Response.json({ items: result?.items || [], pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
 }
+
+export const GET = withApiErrors(handleGET, { route: '/api/knowledge/bookmarks', method: 'GET' });

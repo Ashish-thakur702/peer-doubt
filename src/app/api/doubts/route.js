@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { z } from 'zod';
 import connectDB from '@/lib/db';
 import Doubt from '@/models/Doubt';
@@ -16,7 +17,7 @@ const schema = z.object({
     isAnonymous: z.boolean().optional(),
 });
 
-export async function POST(req) {
+async function handlePOST(req) {
     const { session, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
 
@@ -39,7 +40,7 @@ export async function POST(req) {
     return Response.json(doubt, { status: 201 });
 }
 
-export async function GET(req) {
+async function handleGET(req) {
     const { session, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
 
@@ -47,3 +48,6 @@ export async function GET(req) {
     const doubts = await Doubt.find({ author: session.user.id }).sort({ createdAt: -1 });
     return Response.json(doubts);
 }
+
+export const POST = withApiErrors(handlePOST, { route: '/api/doubts', method: 'POST' });
+export const GET = withApiErrors(handleGET, { route: '/api/doubts', method: 'GET' });

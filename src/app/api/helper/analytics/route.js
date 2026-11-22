@@ -1,10 +1,11 @@
+import { withApiErrors } from '@/lib/api-errors';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
 import AnswerFeedback from '@/models/AnswerFeedback';
 import { requireRole } from '@/lib/session';
 
-export async function GET() {
+async function handleGET() {
     const { session, error, status } = await requireRole('helper');
     if (error) return Response.json({ msg: error }, { status });
     await connectDB();
@@ -31,3 +32,5 @@ export async function GET() {
         contributionHistory: history,
     });
 }
+
+export const GET = withApiErrors(handleGET, { route: '/api/helper/analytics', method: 'GET' });

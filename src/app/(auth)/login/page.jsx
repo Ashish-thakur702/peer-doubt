@@ -1,14 +1,17 @@
 'use client';
-import { useState } from 'react';
+import { fetchWithTimeout } from '@/lib/client-fetch';
+import { useEffect, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { withTimeout } from '@/lib/client-fetch';
 import AuthShell from '@/components/AuthShell';
+import { authServiceMessage } from '@/lib/auth/client-messages';
 
 const ROLE_OPTIONS = [
-    { value: 'student', title: 'Student / Student Helper', description: 'Access your learning workspace', icon: 'student' },
-    { value: 'academic', title: 'CR / Faculty', description: 'Manage classes and academic activities', icon: 'academic' },
-    { value: 'admin', title: 'Admin', description: 'Manage platform operations', icon: 'admin' },
+    { value: 'student', title: 'Student / Student helper', description: 'Ask questions, help peers, and save useful answers.', icon: 'student' },
+    { value: 'academic', title: 'CR / Faculty', description: 'Guide course discussions and review explanations.', icon: 'academic' },
+    { value: 'admin', title: 'Administrator', description: 'Manage accounts and platform access.', icon: 'admin' },
 ];
 
 function RoleIcon({ name }) {
@@ -37,20 +40,52 @@ export default function Login() {
     const router = useRouter();
     const [form, setForm] = useState({ email: '', password: '', loginAs: 'student' });
     const [error, setError] = useState('');
+    const [serviceNotice, setServiceNotice] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
-    async function onSubmit(e) {
-        e.preventDefault();
+    useEffect(() => {
+        let active = true;
+        fetchWithTimeout('/api/auth/health', { cache: 'no-store' })
+            .then(async (response) => {
+                const status = await response.json().catch(() => ({}));
+                if (active && !response.ok) setServiceNotice(authServiceMessage(status.issue));
+            })
+            .catch(() => {
+                if (active) setServiceNotice(authServiceMessage('service_unreachable'));
+            });
+        return () => { active = false; };
+    }, []);
+
+    async function diagnoseService() {
+        try {
+            const response = await fetchWithTimeout('/api/auth/health', { cache: 'no-store' });
+            const status = await response.json().catch(() => ({}));
+            return response.ok ? '' : authServiceMessage(status.issue);
+        } catch {
+            return authServiceMessage('service_unreachable');
+        }
+    }
+
+    async function onSubmit(event) {
+        event.preventDefault();
         setError('');
         setLoading(true);
         try {
-            const res = await signIn('credentials', { ...form, redirect: false });
-            if (res?.error) {
-                setError(res.error === 'CredentialsSignin'
-                    ? 'Email, password, or account type is incorrect.'
-                    : 'Sign-in is temporarily unavailable. Check your connection and try again shortly.');
+            const result = await withTimeout(signIn('credentials', { ...form, redirect: false }));
+            if (!result?.ok || result?.error) {
+                const issue = await diagnoseService();
+                setServiceNotice(issue);
+                if (issue) return;
+                if (result?.error === 'CredentialsSignin') {
+                    setError('That email, password, or account type does not match. Check your details and try again.');
+                } else {
+                    setError('Sign-in could not be completed. Try again in a moment.');
+                }
                 return;
             }
+
+            setServiceNotice('');
             const callbackUrl = new URLSearchParams(window.location.search).get('callbackUrl');
             const defaultDestination = form.loginAs === 'admin'
                 ? '/admin/users'
@@ -61,62 +96,99 @@ export default function Login() {
             router.push(nextUrl);
             router.refresh();
         } catch {
-            setError('Could not reach the sign-in service. Check your connection and try again.');
+            const issue = await diagnoseService();
+            setServiceNotice(issue);
+            setError(issue ? '' : 'Could not reach the sign-in service. Check your connection and try again.');
         } finally {
             setLoading(false);
         }
     }
 
-    const set = (k) => (e) => setForm((current) => ({ ...current, [k]: e.target.value }));
+    const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
 
     return (
         <AuthShell
             title="Welcome back"
-            hint="Pick up where your doubts left off."
+            hint="Pick up where your doubts left off. Your class knowledge is right where you left it."
             eyebrow="Return to your class"
-            callout="Your open doubts and saved answers are waiting."
-            footer={<>New here? <Link href="/register" className="underline underline-offset-4">Create an account</Link></>}
+            footer={<>New to unStuck? <Link href="/register" className="font-semibold text-pencil underline-offset-4 hover:underline">Create an account</Link></>}
         >
-            <form onSubmit={onSubmit} className="space-y-4">
-                {error && <p role="alert" className="text-sm text-margin">{error}</p>}
-                <fieldset>
-                    <legend className="mb-2 block text-sm font-medium">Log in as</legend>
-                    <div className="role-card-group" role="radiogroup" aria-label="Choose account type">
+            <form onSubmit={onSubmit} className="auth-form space-y-4">
+                {serviceNotice && <p role="status" className="auth-service-notice">{serviceNotice}</p>}
+                {error && <p role="alert" className="auth-error-notice">{error}</p>}
+
+                <fieldset className="min-w-0 border-0 p-0">
+                    <legend className="mb-2.5 block text-sm font-semibold">Continue as</legend>
+                    <div className="role-card-group">
                         {ROLE_OPTIONS.map((role) => {
                             const selected = form.loginAs === role.value;
                             return (
-                                <button
-                                    key={role.value}
-                                    type="button"
-                                    role="radio"
-                                    aria-checked={selected}
-                                    className={`role-card${selected ? ' role-card-selected' : ''}`}
-                                    onClick={() => setForm((current) => ({ ...current, loginAs: role.value }))}
-                                >
+                                <label key={role.value} className={`role-card${selected ? ' role-card-selected' : ''}`}>
+                                    <input
+                                        className="role-card-radio"
+                                        type="radio"
+                                        name="loginAs"
+                                        value={role.value}
+                                        checked={selected}
+                                        onChange={set('loginAs')}
+                                    />
                                     <span className="role-card-icon"><RoleIcon name={role.icon} /></span>
                                     <span className="role-card-copy">
                                         <span className="role-card-title">{role.title}</span>
                                         <span className="role-card-description">{role.description}</span>
                                     </span>
                                     <span className="role-card-indicator" aria-hidden="true">{selected ? '✓' : ''}</span>
-                                </button>
+                                </label>
                             );
                         })}
                     </div>
-                    <p className="mt-1.5 text-xs text-graphite">Helpers sign in with their student or faculty account.</p>
+                    <p className="mt-2 text-xs leading-5 text-graphite">Helpers use their student or faculty account. Course staff access is assigned by an administrator.</p>
                 </fieldset>
+
                 <div>
-                    <label htmlFor="email" className="mb-1 block text-sm font-medium">College email</label>
-                    <input id="email" type="email" className="field" autoComplete="email" onChange={set('email')} required />
+                    <label htmlFor="email" className="mb-1.5 block text-sm font-semibold">Account email</label>
+                    <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        className="field"
+                        autoComplete="username"
+                        autoCapitalize="none"
+                        spellCheck="false"
+                        value={form.email}
+                        onChange={set('email')}
+                        required
+                    />
                 </div>
+
                 <div>
-                    <label htmlFor="password" className="mb-1 block text-sm font-medium">Password</label>
-                    <input id="password" type="password" className="field" autoComplete="current-password"
-                        onChange={set('password')} required />
+                    <label htmlFor="password" className="mb-1.5 block text-sm font-semibold">Password</label>
+                    <div className="auth-password-wrap">
+                        <input
+                            id="password"
+                            name="password"
+                            type={showPassword ? 'text' : 'password'}
+                            className="field"
+                            autoComplete="current-password"
+                            value={form.password}
+                            onChange={set('password')}
+                            required
+                        />
+                        <button
+                            type="button"
+                            className="auth-password-toggle"
+                            onClick={() => setShowPassword((visible) => !visible)}
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                            {showPassword ? 'Hide' : 'Show'}
+                        </button>
+                    </div>
                 </div>
-                <button className="btn w-full" disabled={loading}>
-                    {loading ? 'Logging in...' : 'Log in'}
+
+                <button className="btn-primary auth-submit w-full" disabled={loading}>
+                    {loading ? <><span className="auth-spinner" aria-hidden="true" />Signing you in…</> : <>Log in <span aria-hidden="true">→</span></>}
                 </button>
+                <p className="auth-footnote">Your account and learning history are stored with your class workspace.</p>
             </form>
         </AuthShell>
     );

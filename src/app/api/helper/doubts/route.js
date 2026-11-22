@@ -1,10 +1,11 @@
+import { withApiErrors } from '@/lib/api-errors';
 import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
 import Doubt from '@/models/Doubt';
 import User from '@/models/User';
 import { requireRole } from '@/lib/session';
 
-export async function GET() {
+async function handleGET() {
     const { session, error, status } = await requireRole('helper');
     if (error) return Response.json({ msg: error }, { status });
     await connectDB();
@@ -64,3 +65,5 @@ export async function GET() {
         })),
     });
 }
+
+export const GET = withApiErrors(handleGET, { route: '/api/helper/doubts', method: 'GET' });

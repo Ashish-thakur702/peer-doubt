@@ -1,9 +1,10 @@
+import { withApiErrors } from '@/lib/api-errors';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
 import Doubt from '@/models/Doubt';
 import { requireRole } from '@/lib/session';
 
-export async function GET() {
+async function handleGET() {
     const { session, error, status } = await requireRole('helper');
     if (error) return Response.json({ msg: error }, { status });
 
@@ -35,3 +36,5 @@ export async function GET() {
         doubts: doubts.map((d) => ({ ...d, description: d.description.slice(0, 160) })),
     });
 }
+
+export const GET = withApiErrors(handleGET, { route: '/api/helper/feed', method: 'GET' });

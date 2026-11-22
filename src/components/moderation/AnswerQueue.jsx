@@ -1,9 +1,11 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import StatusBadge from '@/components/StatusBadge';
 import { COURSES } from '@/lib/courses';
+import { formatDateTime } from '@/lib/format-date';
 
 const STATUSES = ['PENDING', 'VERIFIED', 'REJECTED'];
 
@@ -27,7 +29,7 @@ export default function AnswerQueue({ initialStatus = 'PENDING', initialPage = '
         try {
             const params = new URLSearchParams({ type: 'answers', page: String(page), limit: '20', status: statusFilter });
             Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
-            const res = await fetch(`/api/moderation/queue?${params}`);
+            const res = await fetchWithTimeout(`/api/moderation/queue?${params}`);
             const json = await res.json();
             if (!res.ok) throw new Error(json.msg || 'Could not load answers.');
             setItems(json.items || []);
@@ -69,7 +71,7 @@ export default function AnswerQueue({ initialStatus = 'PENDING', initialPage = '
         setBusy(answer._id);
         try {
             const route = action === 'reconsider' ? 'reconsider' : action === 'revise' ? 'revise' : action;
-            const res = await fetch(`/api/moderation/answers/${answer._id}/${route}`, {
+            const res = await fetchWithTimeout(`/api/moderation/answers/${answer._id}/${route}`, {
                 method: 'PATCH', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(action === 'reject' ? { category, note: reason } : { note: reason }),
             });
@@ -88,7 +90,7 @@ export default function AnswerQueue({ initialStatus = 'PENDING', initialPage = '
     async function assign(answer) {
         setBusy(answer._id); setError(''); setMessage('');
         try {
-            const response = await fetch(`/api/moderation/answers/${answer._id}/assign`, { method: 'PUT' });
+            const response = await fetchWithTimeout(`/api/moderation/answers/${answer._id}/assign`, { method: 'PUT' });
             const data = await response.json();
             if (!response.ok) throw new Error(data.msg || 'Could not assign this review.');
             setMessage('Review assigned to you.');
@@ -100,7 +102,7 @@ export default function AnswerQueue({ initialStatus = 'PENDING', initialPage = '
     async function release(answer) {
         setBusy(answer._id); setError(''); setMessage('');
         try {
-            const response = await fetch(`/api/moderation/answers/${answer._id}/assign`, { method: 'DELETE' });
+            const response = await fetchWithTimeout(`/api/moderation/answers/${answer._id}/assign`, { method: 'DELETE' });
             const data = await response.json();
             if (!response.ok) throw new Error(data.msg || 'Could not release this review.');
             setMessage('Review assignment released.');
@@ -134,7 +136,7 @@ export default function AnswerQueue({ initialStatus = 'PENDING', initialPage = '
             {!loading && items.map((answer) => (
                 <article key={answer._id} className="card overflow-hidden">
                     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule bg-paper/70 px-4 py-3 sm:px-5">
-                            <div className="flex flex-wrap items-center gap-2"><StatusBadge status={answer.status} /><span className="text-xs text-graphite">Submitted {new Date(answer.createdAt).toLocaleString()}</span>{answer.reviewAssignedTo && <span className="text-xs text-graphite">Assigned to {answer.reviewAssignedTo.name}</span>}</div>
+                            <div className="flex flex-wrap items-center gap-2"><StatusBadge status={answer.status} /><span className="text-xs text-graphite">Submitted {formatDateTime(answer.createdAt)}</span>{answer.reviewAssignedTo && <span className="text-xs text-graphite">Assigned to {answer.reviewAssignedTo.name || 'Moderator'}</span>}</div>
                         {answer.doubt?._id && <Link href={`/doubts/${answer.doubt._id}`} className="text-sm font-semibold text-pencil hover:underline">Open doubt ↗</Link>}
                     </div>
                     <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[1fr_1.1fr]">
@@ -152,7 +154,7 @@ export default function AnswerQueue({ initialStatus = 'PENDING', initialPage = '
                                 <p className="text-xs text-graphite">{answer.helper?.name || 'Helper'}{Number.isFinite(answer.helper?.helperProfile?.reputation) ? ` · ${answer.helper.helperProfile.reputation} reputation` : ''}</p>
                             </div>
                             <p className="mt-3 whitespace-pre-wrap text-sm leading-6">{answer.content || answer.body}</p>
-                            {answer.moderationHistory?.length > 0 && <details className="mt-3 text-xs text-graphite"><summary className="cursor-pointer font-semibold">Review history ({answer.moderationHistory.length})</summary><ul className="mt-2 space-y-1">{answer.moderationHistory.map((entry, index) => <li key={`${entry.action}-${index}`}>{entry.action} · {entry.moderator?.name || 'Moderator'} · {new Date(entry.createdAt).toLocaleString()}{entry.reason ? ` · ${entry.reason}` : ''}</li>)}</ul></details>}
+                            {answer.moderationHistory?.length > 0 && <details className="mt-3 text-xs text-graphite"><summary className="cursor-pointer font-semibold">Review history ({answer.moderationHistory.length})</summary><ul className="mt-2 space-y-1">{answer.moderationHistory.map((entry, index) => <li key={`${entry.action}-${index}`}>{entry.action} · {entry.moderator?.name || 'Moderator'} · {formatDateTime(entry.createdAt)}{entry.reason ? ` · ${entry.reason}` : ''}</li>)}</ul></details>}
                         </section>
                     </div>
                     {statusFilter === 'PENDING' && <div className="flex flex-col gap-3 border-t border-rule p-4 sm:p-5">

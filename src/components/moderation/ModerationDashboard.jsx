@@ -1,6 +1,8 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { formatDate } from '@/lib/format-date';
 
 const STAT_CARDS = [
     { key: 'pendingAnswers', label: 'Answers to review', href: '/moderation/answers', accent: 'text-pencil' },
@@ -29,7 +31,7 @@ export default function ModerationDashboard() {
     const load = useCallback(async () => {
         setRefreshing(true); setError('');
         try {
-            const res = await fetch('/api/moderation/stats');
+            const res = await fetchWithTimeout('/api/moderation/stats');
             const json = await res.json();
             if (!res.ok) throw new Error(json.msg || 'Could not load moderation overview.');
             setData(json);
@@ -81,7 +83,7 @@ export default function ModerationDashboard() {
                     {data?.recentActivity?.length ? <ul className="mt-4 divide-y divide-rule">
                         {data.recentActivity.map((item) => <li key={item._id} className="flex flex-wrap items-start justify-between gap-2 py-3">
                             <div><p className="text-sm font-semibold">{ACTION_LABELS[item.action] || item.action}</p><p className="mt-1 text-xs text-graphite">{item.moderator?.name || 'Moderator'} · {item.entityType}</p></div>
-                            <time className="text-xs text-graphite" dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleDateString()}</time>
+                            <time className="text-xs text-graphite" dateTime={item.createdAt || undefined}>{formatDate(item.createdAt)}</time>
                         </li>)}
                     </ul> : data ? <div className="mt-5 rounded-xl bg-paper p-5 text-sm text-graphite">No moderation activity yet. Completed reviews will appear here.</div> : <div className="mt-5 h-36 animate-pulse rounded-xl bg-paper" aria-label="Loading recent activity" />}
                 </div>

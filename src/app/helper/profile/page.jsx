@@ -1,4 +1,5 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -17,7 +18,7 @@ export default function HelperProfile() {
         let active = true;
         async function loadProfile() {
             try {
-                const response = await fetch('/api/users/helper-profile');
+                const response = await fetchWithTimeout('/api/users/helper-profile');
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.msg || 'Could not load your profile.');
                 if (active) setProfile(data);
@@ -52,7 +53,7 @@ export default function HelperProfile() {
         setError('');
         setSaving(true);
         try {
-            const response = await fetch('/api/users/helper-profile', {
+            const response = await fetchWithTimeout('/api/users/helper-profile', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

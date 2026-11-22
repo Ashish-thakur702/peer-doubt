@@ -1,6 +1,8 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 import { useCallback, useEffect, useState } from 'react';
 import StatusBadge from '@/components/StatusBadge';
+import { formatDateTime } from '@/lib/format-date';
 
 const STATES = ['OPEN', 'RESOLVED', 'DISMISSED'];
 
@@ -28,7 +30,7 @@ export default function ReportQueue() {
         const params = new URLSearchParams({ status, page: String(page), limit: '20' });
         if (type !== 'all') params.set('type', type);
         try {
-            const res = await fetch(`/api/reports?${params}`);
+            const res = await fetchWithTimeout(`/api/reports?${params}`);
             const json = await res.json();
             if (!res.ok) throw new Error(json.msg || 'Could not load reports.');
             setItems(json.items || []);
@@ -45,7 +47,7 @@ export default function ReportQueue() {
     async function decide(report, decision) {
         setBusy(report._id); setError(''); setMessage('');
         try {
-            const res = await fetch(`/api/reports/${report._id}`, {
+            const res = await fetchWithTimeout(`/api/reports/${report._id}`, {
                 method: 'PATCH', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ decision, note: notes[report._id] || '' }),
             });
@@ -75,11 +77,11 @@ export default function ReportQueue() {
         {loading && <div className="card h-48 animate-pulse" aria-label="Loading reports" />}
         {!loading && !error && !items.length && <div className="card px-5 py-12 text-center"><h3 className="font-bold">No {status.toLowerCase()} reports</h3><p className="mt-1 text-sm text-graphite">Change the filters to review other reports.</p></div>}
         {!loading && items.map((report) => <article key={report._id} className="card space-y-4 p-4 sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><StatusBadge status={report.status} /><span className="text-xs font-semibold uppercase tracking-wide text-graphite">{report.targetType}</span></div><h3 className="mt-3 text-lg font-bold">{report.reason}</h3><p className="mt-1 text-sm text-graphite">Reported by {report.reporter?.name || 'Student'} · {new Date(report.createdAt).toLocaleString()}</p></div>{report.handledBy && <p className="text-xs text-graphite">Reviewed by {report.handledBy.name}</p>}</div>
+            <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><StatusBadge status={report.status} /><span className="text-xs font-semibold uppercase tracking-wide text-graphite">{report.targetType || 'content'}</span></div><h3 className="mt-3 text-lg font-bold">{report.reason || 'Report details unavailable'}</h3><p className="mt-1 text-sm text-graphite">Reported by {report.reporter?.name || 'Student'} · {formatDateTime(report.createdAt)}</p></div>{report.handledBy && <p className="text-xs text-graphite">Reviewed by {report.handledBy.name || 'Moderator'}</p>}</div>
             {report.details && <p className="rounded-xl border border-rule p-3 text-sm leading-6">{report.details}</p>}
             <ReportedContent report={report} />
             {report.targetContent?.flaggedForReview && <p className="rounded-lg bg-margin/10 p-3 text-xs font-semibold text-margin">Flagged for additional review</p>}
-            {report.decisionHistory?.length > 0 && <details className="text-sm"><summary className="cursor-pointer font-semibold text-graphite">Decision history ({report.decisionHistory.length})</summary><ul className="mt-2 space-y-1 text-xs text-graphite">{report.decisionHistory.map((entry, index) => <li key={`${entry.action}-${index}`}>{entry.action} · {entry.moderator?.name || 'Moderator'} · {entry.reason || 'No note'} · {new Date(entry.createdAt).toLocaleString()}</li>)}</ul></details>}
+            {report.decisionHistory?.length > 0 && <details className="text-sm"><summary className="cursor-pointer font-semibold text-graphite">Decision history ({report.decisionHistory.length})</summary><ul className="mt-2 space-y-1 text-xs text-graphite">{report.decisionHistory.map((entry, index) => <li key={`${entry.action}-${index}`}>{entry.action} · {entry.moderator?.name || 'Moderator'} · {entry.reason || 'No note'} · {formatDateTime(entry.createdAt)}</li>)}</ul></details>}
             {report.status === 'OPEN' && <div className="space-y-2 border-t border-rule pt-4"><label className="text-sm font-semibold" htmlFor={`report-note-${report._id}`}>Decision note <span className="font-normal text-graphite">(optional)</span></label><textarea id={`report-note-${report._id}`} className="field" rows={2} maxLength={1000} placeholder="Document the reason for your decision" value={notes[report._id] || ''} onChange={(event) => setNotes((current) => ({ ...current, [report._id]: event.target.value }))} /><div className="flex flex-wrap justify-end gap-2"><button type="button" className="btn-quiet" disabled={!!busy} onClick={() => decide(report, 'DISMISS')}>{busy === report._id ? 'Saving…' : 'Dismiss report'}</button>{!report.targetContent?.flaggedForReview && <button type="button" className="btn-quiet" disabled={!!busy} onClick={() => decide(report, 'FLAG')}>Flag for review</button>}<button type="button" className="btn-primary" disabled={!!busy} onClick={() => decide(report, 'RESOLVE')}>{busy === report._id ? 'Saving…' : 'Resolve report'}</button></div></div>}
         </article>)}
         {!loading && pagination.pages > 1 && <div className="flex items-center justify-between"><button type="button" className="btn-quiet" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>Previous</button><span className="text-sm text-graphite">Page {page} of {pagination.pages} · {pagination.total} reports</span><button type="button" className="btn-quiet" disabled={page >= pagination.pages} onClick={() => setPage((current) => current + 1)}>Next</button></div>}

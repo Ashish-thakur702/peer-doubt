@@ -1,4 +1,5 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -23,7 +24,7 @@ export default function NewDoubt() {
             const params = new URLSearchParams({ q });
             if (form.course) params.set('course', form.course);
             if (form.topic) params.set('topic', form.topic);
-            const res = await fetch(`/api/doubts/similar?${params}`);
+            const res = await fetchWithTimeout(`/api/doubts/similar?${params}`);
             if (res.ok && !cancelled) setSimilar(await res.json());
         }, 500);
         return () => {
@@ -36,18 +37,26 @@ export default function NewDoubt() {
         e.preventDefault();
         setLoading(true);
         setError('');
-        const res = await fetch('/api/doubts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ...form,
-                tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
-            }),
-        });
-        const data = await res.json();
-        setLoading(false);
-        if (!res.ok) return setError(data.msg);
-        router.push(`/doubts/${data._id}`);
+        try {
+            const res = await fetchWithTimeout('/api/doubts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...form,
+                    tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+                }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setError(data.msg || 'Could not submit your doubt. Please try again.');
+                return;
+            }
+            router.push(`/doubts/${data._id}`);
+        } catch {
+            setError('Could not reach the server. Check your connection and try again.');
+        } finally {
+            setLoading(false);
+        }
     }
 
     const set = (k) => (e) => {

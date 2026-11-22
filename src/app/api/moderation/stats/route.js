@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
 import Doubt from '@/models/Doubt';
@@ -8,7 +9,7 @@ import { getDuplicateSuggestions } from '@/lib/duplicate-suggestions';
 import { requirePermission } from '@/lib/session';
 import { getModerationDoubtFilter, getModerationDoubtIds, getModerationLogFilter, getModerationReportFilter } from '@/lib/auth/scope.mjs';
 
-export async function GET() {
+async function handleGET() {
     const { user, error, status } = await requirePermission('canModerate');
     if (error) return Response.json({ msg: error }, { status });
     await connectDB();
@@ -65,3 +66,5 @@ export async function GET() {
         knowledgeEntries: knowledgeByCourse.reduce((sum, item) => sum + item.count, 0),
     }, activity, knowledgeByCourse, knowledgeByTopic, recentActivity });
 }
+
+export const GET = withApiErrors(handleGET, { route: '/api/moderation/stats', method: 'GET' });

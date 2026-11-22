@@ -1,10 +1,9 @@
 import Link from 'next/link';
 import StatusBadge from './StatusBadge';
+import { formatDate } from '@/lib/format-date';
 
 export default function DoubtCard({ doubt }) {
-    const date = new Date(doubt.createdAt).toLocaleDateString('en-IN', {
-        day: 'numeric', month: 'short', year: 'numeric',
-    });
+    const date = formatDate(doubt?.createdAt, 'Recently');
 
     return (
         <li className="card doubt-card overflow-hidden transition hover:border-pencil/50 hover:shadow-sm">

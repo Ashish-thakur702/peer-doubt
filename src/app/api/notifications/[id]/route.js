@@ -1,9 +1,10 @@
+import { withApiErrors } from '@/lib/api-errors';
 import connectDB from '@/lib/db';
 import Notification from '@/models/Notification';
 import { requireRole } from '@/lib/session';
 import { validObjectId } from '@/lib/moderation';
 
-export async function PATCH(_req, { params }) {
+async function handlePATCH(_req, { params }) {
     const { session, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
@@ -15,3 +16,5 @@ export async function PATCH(_req, { params }) {
     ).lean();
     return Response.json({ ok: true, changed: Boolean(item) });
 }
+
+export const PATCH = withApiErrors(handlePATCH, { route: '/api/notifications/[id]', method: 'PATCH' });

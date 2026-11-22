@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import connectDB from '@/lib/db';
@@ -14,7 +15,7 @@ const schema = z.object({
     message: 'Write an explanation before submitting.',
 });
 
-export async function POST(req, { params }) {
+async function handlePOST(req, { params }) {
     const { session, error, status } = await requireRole('helper');
     if (error) return Response.json({ msg: error }, { status });
 
@@ -61,3 +62,5 @@ export async function POST(req, { params }) {
         return Response.json({ msg: 'Could not save your answer. Please try again.' }, { status: 500 });
     }
 }
+
+export const POST = withApiErrors(handlePOST, { route: '/api/doubts/[id]/answers', method: 'POST' });

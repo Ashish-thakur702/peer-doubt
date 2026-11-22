@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { z } from 'zod';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
@@ -19,7 +20,7 @@ async function getHelperProfileSession() {
     return result;
 }
 
-export async function GET() {
+async function handleGET() {
     const { session, error, status } = await getHelperProfileSession();
     if (error) return Response.json({ msg: error }, { status });
 
@@ -37,7 +38,7 @@ export async function GET() {
     });
 }
 
-export async function PATCH(req) {
+async function handlePATCH(req) {
     const { session, error, status } = await getHelperProfileSession();
     if (error) return Response.json({ msg: error }, { status });
 
@@ -83,3 +84,6 @@ export async function PATCH(req) {
         .lean();
     return Response.json({ msg: 'Saved', helperEnabled: Boolean(user?.isHelper && user?.availability), roles: user?.roles || [] });
 }
+
+export const GET = withApiErrors(handleGET, { route: '/api/users/helper-profile', method: 'GET' });
+export const PATCH = withApiErrors(handlePATCH, { route: '/api/users/helper-profile', method: 'PATCH' });

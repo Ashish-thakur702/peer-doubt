@@ -1,8 +1,14 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 
 import { useState } from 'react';
 
-export default function QuestionRating({
+export default function QuestionRating(props) {
+    const { doubtId, average = 0, count = 0, currentRating = 0 } = props;
+    return <RatingWidget key={`${doubtId}:${average}:${count}:${currentRating}`} {...props} />;
+}
+
+function RatingWidget({
     doubtId,
     average = 0,
     count = 0,
@@ -10,8 +16,11 @@ export default function QuestionRating({
     canRate = true,
     disabledReason = 'You cannot rate your own question.',
 }) {
-    const [rating, setRating] = useState(currentRating);
-    const [summary, setSummary] = useState({ average, count });
+    const [rating, setRating] = useState(Number(currentRating) || 0);
+    const [summary, setSummary] = useState({
+        average: Number.isFinite(Number(average)) ? Number(average) : 0,
+        count: Number.isFinite(Number(count)) ? Math.max(0, Number(count)) : 0,
+    });
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState('');
 
@@ -28,7 +37,7 @@ export default function QuestionRating({
         setBusy(true);
         setMessage('');
         try {
-            const response = await fetch(`/api/doubts/${doubtId}/rating`, {
+            const response = await fetchWithTimeout(`/api/doubts/${doubtId}/rating`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ rating: value }),
@@ -36,7 +45,10 @@ export default function QuestionRating({
             const data = await response.json();
             if (!response.ok) throw new Error(data.msg || 'Could not save your rating.');
             setRating(data.rating);
-            setSummary({ average: data.average, count: data.count });
+            setSummary({
+                average: Number.isFinite(Number(data.average)) ? Number(data.average) : 0,
+                count: Number.isFinite(Number(data.count)) ? Math.max(0, Number(data.count)) : 0,
+            });
             setMessage('Your rating is saved. You can update it any time.');
         } catch (error) {
             setRating(previousRating);

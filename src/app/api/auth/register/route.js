@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import connectDB from '@/lib/db';
@@ -7,10 +8,12 @@ import { publicRegistrationFields } from '@/lib/auth/public-registration.mjs';
 const schema = z.object({
     name: z.string().trim().min(2).max(100),
     email: z.string().trim().email().transform((value) => value.toLowerCase()),
-    password: z.string().min(6),
+    password: z.string().min(8).refine((value) => Buffer.byteLength(value, 'utf8') <= 72, {
+        message: 'Password must be 72 UTF-8 bytes or fewer.',
+    }),
 });
 
-export async function POST(req) {
+async function handlePOST(req) {
     try {
         let body;
         try {
@@ -39,3 +42,5 @@ export async function POST(req) {
         return Response.json({ msg: 'Registration could not be completed. Check the application database configuration and try again.' }, { status: 500 });
     }
 }
+
+export const POST = withApiErrors(handlePOST, { route: '/api/auth/register', method: 'POST' });

@@ -1,4 +1,5 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -24,7 +25,7 @@ export default function DuplicateQueue() {
     const load = useCallback(async () => {
         setLoading(true); setError('');
         try {
-            const res = await fetch(`/api/moderation/duplicates?page=${page}&limit=20`);
+            const res = await fetchWithTimeout(`/api/moderation/duplicates?page=${page}&limit=20`);
             const json = await res.json();
             if (!res.ok) throw new Error(json.msg || 'Could not load duplicate suggestions.');
             setItems(json.items || []);
@@ -40,7 +41,7 @@ export default function DuplicateQueue() {
     async function decide(item, decision) {
         setBusy(item.candidate._id); setError(''); setMessage('');
         try {
-            const res = await fetch(`/api/doubts/${item.candidate._id}/duplicate`, {
+            const res = await fetchWithTimeout(`/api/doubts/${item.candidate._id}/duplicate`, {
                 method: 'PATCH', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ decision, originalDoubtId: item.original._id }),
             });

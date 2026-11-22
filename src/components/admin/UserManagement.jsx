@@ -1,7 +1,9 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { COURSES } from '@/lib/courses';
+import { formatDate } from '@/lib/format-date';
 
 const ROLE_OPTIONS = [
     { value: 'student', label: 'Student' },
@@ -27,7 +29,7 @@ export default function UserManagement() {
         try {
             const params = new URLSearchParams({ page: String(page), limit: '20' });
             if (q.trim()) params.set('q', q.trim());
-            const response = await fetch(`/api/admin/users?${params}`);
+            const response = await fetchWithTimeout(`/api/admin/users?${params}`);
             const data = await response.json();
             if (!response.ok) throw new Error(data.msg || 'Could not load users.');
             setItems(data.items || []); setPagination(data.pagination); setViewerId(data.viewerId);
@@ -65,7 +67,7 @@ export default function UserManagement() {
         if (!window.confirm(`Apply these access changes to ${user.name}?\n\n${summary}`)) return;
         setBusy(user._id); setError(''); setMessage('');
         try {
-            const response = await fetch('/api/admin/users', {
+            const response = await fetchWithTimeout('/api/admin/users', {
                 method: 'PATCH', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user._id, ...draft }),
             });
@@ -89,7 +91,7 @@ export default function UserManagement() {
             const disabled = user._id === viewerId;
             const privileged = ['cr', 'faculty'].includes(draft.role);
             return <article key={user._id} className="card space-y-4 p-4 sm:p-5">
-                <header className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-bold">{user.name}</h2><p className="text-sm text-graphite">{user.email} · Joined {new Date(user.createdAt).toLocaleDateString()}</p><p className="mt-2 text-xs text-graphite">Helper opt-in: {user.isHelper ? `Available ${user.availability ? 'now' : 'when enabled'} in ${(user.courses || []).join(', ')}` : 'Not opted in'}</p><p className="mt-1 text-xs text-graphite">Activity: {user.activity.doubts} doubts, {user.activity.answers} answers, {user.activity.reports} reports, {user.activity.moderationActions} moderation actions</p></div><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${draft.isSuspended ? 'bg-margin/10 text-margin' : 'bg-verified/10 text-verified'}`}>{draft.isSuspended ? 'Suspended' : 'Active'}</span></header>
+                <header className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-bold">{user.name || 'Unnamed account'}</h2><p className="text-sm text-graphite">{user.email || 'Email unavailable'} · Joined {formatDate(user.createdAt)}</p><p className="mt-2 text-xs text-graphite">Helper opt-in: {user.isHelper ? `Available ${user.availability ? 'now' : 'when enabled'} in ${(user.courses || []).join(', ')}` : 'Not opted in'}</p><p className="mt-1 text-xs text-graphite">Activity: {user.activity?.doubts || 0} doubts, {user.activity?.answers || 0} answers, {user.activity?.reports || 0} reports, {user.activity?.moderationActions || 0} moderation actions</p></div><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${draft.isSuspended ? 'bg-margin/10 text-margin' : 'bg-verified/10 text-verified'}`}>{draft.isSuspended ? 'Suspended' : 'Active'}</span></header>
                 <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block text-sm font-semibold">Account role<select className="field mt-1" value={draft.role} disabled={disabled || busy === user._id} onChange={(event) => update(user._id, 'role', event.target.value)}>{ROLE_OPTIONS.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></label>
                     {draft.role === 'faculty' && <label className="block text-sm font-semibold">Department<input className="field mt-1" maxLength={120} value={draft.department} disabled={disabled || busy === user._id} onChange={(event) => update(user._id, 'department', event.target.value)} placeholder="e.g. Computer Science" /></label>}

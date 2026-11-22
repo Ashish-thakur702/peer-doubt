@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
 import Doubt from '@/models/Doubt';
@@ -6,7 +7,7 @@ import KnowledgeEntry from '@/models/KnowledgeEntry';
 import { requireRole } from '@/lib/session';
 import { validObjectId } from '@/lib/moderation';
 
-export async function PUT(req, { params }) {
+async function handlePUT(req, { params }) {
     const { session, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
@@ -27,3 +28,5 @@ export async function PUT(req, { params }) {
     }
     return Response.json({ saved: body.saved });
 }
+
+export const PUT = withApiErrors(handlePUT, { route: '/api/knowledge/[id]/bookmark', method: 'PUT' });

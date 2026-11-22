@@ -1,4 +1,5 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import KnowledgeSaveButton from '@/components/knowledge/KnowledgeSaveButton';
@@ -14,7 +15,7 @@ export default function SavedKnowledge() {
     const load = useCallback(async () => {
         setLoading(true); setError('');
         try {
-            const response = await fetch(`/api/knowledge/bookmarks?page=${page}&limit=24`);
+            const response = await fetchWithTimeout(`/api/knowledge/bookmarks?page=${page}&limit=24`);
             const data = await response.json();
             if (!response.ok) throw new Error(data.msg || 'Could not load saved knowledge.');
             setItems(data.items || []); setPagination(data.pagination || { page, pages: 1, total: 0 });

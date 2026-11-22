@@ -1,6 +1,8 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 
 import { useEffect, useState } from 'react';
+import { formatDateTime } from '@/lib/format-date';
 
 const LABELS = {
     VERIFIED: 'Verified answer',
@@ -46,7 +48,7 @@ export default function ModerationHistory() {
             if (from) params.set('from', from);
             if (to) params.set('to', to);
             try {
-                const response = await fetch(`/api/moderation/history?${params}`);
+                const response = await fetchWithTimeout(`/api/moderation/history?${params}`);
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.msg || 'Could not load history.');
                 if (active) {
@@ -92,7 +94,7 @@ export default function ModerationHistory() {
                         <p className="mt-2 text-sm text-graphite">{item.moderator?.name || 'Moderator'}{item.reason ? ` · ${item.reason}` : ' · No note recorded'}</p>
                         <p className="mt-1 text-xs text-graphite">Record {item.entityId.toString()}</p>
                     </div>
-                    <time className="shrink-0 text-xs text-graphite" dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time>
+                    <time className="shrink-0 text-xs text-graphite" dateTime={item.createdAt || undefined}>{formatDateTime(item.createdAt)}</time>
                 </li>)}
             </ol>}
         </div>

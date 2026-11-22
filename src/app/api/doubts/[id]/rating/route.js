@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import connectDB from '@/lib/db';
@@ -6,7 +7,7 @@ import { requireRole } from '@/lib/session';
 
 const schema = z.object({ rating: z.number().int().min(1).max(5) });
 
-export async function PUT(req, { params }) {
+async function handlePUT(req, { params }) {
     const { session, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
 
@@ -72,3 +73,5 @@ export async function PUT(req, { params }) {
     const ownRating = updated?.ratings?.find((entry) => entry.user.toString() === session.user.id)?.value;
     return Response.json({ rating: ownRating, average: updated.ratingAverage, count: updated.ratingCount });
 }
+
+export const PUT = withApiErrors(handlePUT, { route: '/api/doubts/[id]/rating', method: 'PUT' });

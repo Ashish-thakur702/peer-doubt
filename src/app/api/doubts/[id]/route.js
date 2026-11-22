@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import connectDB from '@/lib/db';
@@ -13,7 +14,7 @@ const updateSchema = z.object({
     isAnonymous: z.boolean(),
 });
 
-export async function GET(req, { params }) {
+async function handleGET(req, { params }) {
     const { session, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
 
@@ -30,7 +31,7 @@ export async function GET(req, { params }) {
     return Response.json(doubt);
 }
 
-export async function PATCH(req, { params }) {
+async function handlePATCH(req, { params }) {
     const { session, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
 
@@ -67,3 +68,6 @@ export async function PATCH(req, { params }) {
         return Response.json({ msg: 'This doubt changed while you were editing it. Refresh and try again.' }, { status: 409 });
     return Response.json(updated);
 }
+
+export const GET = withApiErrors(handleGET, { route: '/api/doubts/[id]', method: 'GET' });
+export const PATCH = withApiErrors(handlePATCH, { route: '/api/doubts/[id]', method: 'PATCH' });

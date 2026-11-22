@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import connectDB from '@/lib/db';
@@ -26,7 +27,7 @@ function accountRoles(role, helperEnabled) {
     return [...new Set([role, 'student', 'helper'])];
 }
 
-export async function GET(req) {
+async function handleGET(req) {
     const { session, error, status } = await requireRole('admin');
     if (error) return Response.json({ msg: error }, { status });
     await connectDB();
@@ -74,7 +75,7 @@ export async function GET(req) {
     return Response.json({ items, pagination: { page, limit, total, pages: Math.ceil(total / limit) }, viewerId: session.user.id });
 }
 
-export async function PATCH(req) {
+async function handlePATCH(req) {
     const { session, error, status } = await requireRole('admin');
     if (error) return Response.json({ msg: error }, { status });
     let body;
@@ -158,3 +159,6 @@ export async function PATCH(req) {
         return Response.json({ msg: err.status ? err.message : 'Could not save account changes' }, { status: err.status || 500 });
     } finally { await transaction.endSession(); }
 }
+
+export const GET = withApiErrors(handleGET, { route: '/api/admin/users', method: 'GET' });
+export const PATCH = withApiErrors(handlePATCH, { route: '/api/admin/users', method: 'PATCH' });

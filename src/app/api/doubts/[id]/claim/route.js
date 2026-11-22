@@ -1,10 +1,11 @@
+import { withApiErrors } from '@/lib/api-errors';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
 import Doubt from '@/models/Doubt';
 import { requireRole } from '@/lib/session';
 
-export async function POST(_req, { params }) {
+async function handlePOST(_req, { params }) {
     const { session, error, status } = await requireRole('helper');
     if (error) return Response.json({ msg: error }, { status });
 
@@ -34,3 +35,5 @@ export async function POST(_req, { params }) {
         return Response.json({ msg: 'Someone already took this doubt, or it is outside your courses.' }, { status: 409 });
     return Response.json({ ok: true, doubt });
 }
+
+export const POST = withApiErrors(handlePOST, { route: '/api/doubts/[id]/claim', method: 'POST' });

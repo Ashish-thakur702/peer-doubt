@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
 import Doubt from '@/models/Doubt';
@@ -8,7 +9,7 @@ import { parsePagination } from '@/lib/moderation';
 import { requirePermission } from '@/lib/session';
 import { getModerationDoubtFilter, getModerationDoubtIds, getModerationReportFilter } from '@/lib/auth/scope.mjs';
 
-export async function GET(req) {
+async function handleGET(req) {
     const { user, error, status } = await requirePermission('canModerate');
     if (error) return Response.json({ msg: error }, { status });
     await connectDB();
@@ -76,3 +77,5 @@ export async function GET(req) {
     ]);
     return Response.json({ items, pagination: { page, limit, total, pages: Math.ceil(total / limit) }, filters: { courses: scopedCourses || Object.keys(COURSES), topics: course ? (COURSES[course] || []) : [...new Set(Object.values(COURSES).flat())] } });
 }
+
+export const GET = withApiErrors(handleGET, { route: '/api/moderation/queue', method: 'GET' });

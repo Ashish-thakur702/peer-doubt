@@ -1,4 +1,5 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -19,7 +20,7 @@ export default function HelperWorkspace() {
         setLoading(true);
         setError('');
         try {
-            const response = await fetch('/api/helper/doubts');
+            const response = await fetchWithTimeout('/api/helper/doubts');
             const data = await response.json();
             if (!response.ok) throw new Error(data.msg || 'Could not load helper work.');
             setReady(data.ready !== false);
@@ -42,7 +43,7 @@ export default function HelperWorkspace() {
         setError('');
         setMessage('');
         try {
-            const response = await fetch(`/api/doubts/${doubtId}/claim`, { method: 'POST' });
+            const response = await fetchWithTimeout(`/api/doubts/${doubtId}/claim`, { method: 'POST' });
             const data = await response.json();
             if (!response.ok) throw new Error(data.msg || 'Could not claim this doubt.');
             setMessage('Doubt claimed. Add your explanation when you are ready.');
@@ -62,7 +63,7 @@ export default function HelperWorkspace() {
         try {
             const needsRevision = assigned.find((item) => item._id === doubtId)?.myAnswer?.status === 'REVISION_REQUESTED';
             const answer = assigned.find((item) => item._id === doubtId)?.myAnswer;
-            const response = await fetch(needsRevision ? `/api/answers/${answer._id}` : `/api/doubts/${doubtId}/answers`, {
+            const response = await fetchWithTimeout(needsRevision ? `/api/answers/${answer._id}` : `/api/doubts/${doubtId}/answers`, {
                 method: needsRevision ? 'PATCH' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: answers[doubtId] || '' }),

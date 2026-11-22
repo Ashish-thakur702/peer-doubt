@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
 import { requirePermission } from '@/lib/session';
@@ -7,7 +8,7 @@ import { getModerationAnswerFilter } from '@/lib/auth/scope.mjs';
 
 const PENDING = ['PENDING', 'SUBMITTED', 'PENDING_REVIEW', 'ACCEPTED'];
 
-export async function PUT(_req, { params }) {
+async function handlePUT(_req, { params }) {
     const { session, user, error, status } = await requirePermission('canModerate');
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
@@ -22,7 +23,7 @@ export async function PUT(_req, { params }) {
     return Response.json({ ok: true, assignedTo: answer.reviewAssignedTo, assignedAt: answer.reviewAssignedAt });
 }
 
-export async function DELETE(_req, { params }) {
+async function handleDELETE(_req, { params }) {
     const { session, user, error, status } = await requirePermission('canModerate');
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
@@ -35,3 +36,6 @@ export async function DELETE(_req, { params }) {
     ).select('_id').lean();
     return Response.json({ ok: true, released: Boolean(answer) });
 }
+
+export const PUT = withApiErrors(handlePUT, { route: '/api/moderation/answers/[id]/assign', method: 'PUT' });
+export const DELETE = withApiErrors(handleDELETE, { route: '/api/moderation/answers/[id]/assign', method: 'DELETE' });

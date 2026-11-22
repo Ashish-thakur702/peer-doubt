@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
+import { formatDate, formatDateTime } from '@/lib/format-date';
 import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
 import Doubt from '@/models/Doubt';
@@ -42,11 +43,7 @@ async function DoubtDetailContent({ params }) {
     const currentRating = doubt.ratings?.find((entry) => entry.user.toString() === session.user.id)?.value || 0;
     const ratingAvailable = ['ANSWERED', 'VERIFIED'].includes(doubt.status);
     const inFlow = ['OPEN', 'CLAIMED', 'ANSWERED', 'VERIFIED'].includes(doubt.status);
-    const date = new Date(doubt.createdAt).toLocaleDateString('en-IN', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-    });
+    const date = formatDate(doubt.createdAt);
 
     return (
         <div className="space-y-8">
@@ -127,7 +124,7 @@ async function DoubtDetailContent({ params }) {
                             {decision && (
                                 <p className="mt-2 text-xs text-graphite">
                                     {answer.status === 'VERIFIED' ? 'Verified' : 'Reviewed'} by {decision.moderator?.name || 'Moderator'}
-                                    {decision.createdAt ? ` · ${new Date(decision.createdAt).toLocaleDateString()}` : ''}
+                                    {decision.createdAt ? ` · ${formatDate(decision.createdAt)}` : ''}
                                 </p>
                             )}
                             {answer.flaggedForReview && !canSeeFlagged ? <p className="mt-3 rounded-lg bg-margin/10 p-3 text-sm text-margin">This answer is temporarily hidden while the moderation team reviews a report.</p> : <p className="mt-3 max-w-prose whitespace-pre-wrap font-serif text-[17px] leading-[1.75]">{content}</p>}
@@ -135,7 +132,7 @@ async function DoubtDetailContent({ params }) {
                                 <p className="mt-3 rounded-lg bg-paper p-3 text-sm text-graphite">Moderator note: {decision.reason}</p>
                             )}
                             {answer.status === 'VERIFIED' && <AnswerFeedback answerId={answer._id.toString()} />}
-                            {answer.revisions?.length > 0 && <details className="mt-3 text-xs text-graphite"><summary className="cursor-pointer font-semibold">Revision history ({answer.revisions.length})</summary><ol className="mt-2 space-y-2">{answer.revisions.map((revision, index) => <li key={`${answer._id}-${index}`}><p>{revision.editedBy?.name || 'Helper'} edited on {new Date(revision.createdAt).toLocaleString()}</p><p className="mt-1 whitespace-pre-wrap rounded bg-paper p-2">{revision.content}</p></li>)}</ol></details>}
+                            {answer.revisions?.length > 0 && <details className="mt-3 text-xs text-graphite"><summary className="cursor-pointer font-semibold">Revision history ({answer.revisions.length})</summary><ol className="mt-2 space-y-2">{answer.revisions.map((revision, index) => <li key={`${answer._id}-${index}`}><p>{revision.editedBy?.name || 'Helper'} edited on {formatDateTime(revision.createdAt)}</p><p className="mt-1 whitespace-pre-wrap rounded bg-paper p-2">{revision.content}</p></li>)}</ol></details>}
                             <div className="mt-4 flex flex-wrap items-center gap-3">
                                 {canAccept && <AcceptButton answerId={answer._id.toString()} />}
                                 <ReportButton targetType="answer" targetId={answer._id.toString()} />

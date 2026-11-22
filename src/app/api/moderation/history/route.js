@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import connectDB from '@/lib/db';
 import ModerationLog from '@/models/ModerationLog';
 import User from '@/models/User';
@@ -9,7 +10,7 @@ import { getModerationLogFilter } from '@/lib/auth/scope.mjs';
 
 const ACTIONS = ['VERIFIED', 'REJECTED', 'REVISION_REQUESTED', 'RECONSIDERED', 'RESOLVED', 'DISMISSED', 'FLAGGED', 'DUPLICATE_CONFIRMED', 'DUPLICATE_DISMISSED', 'KNOWLEDGE_ARCHIVED', 'USER_ACCESS_UPDATED', 'USER_ROLE_CHANGED', 'USER_COURSES_ASSIGNED', 'USER_DEPARTMENT_UPDATED', 'USER_SUSPENDED', 'USER_REACTIVATED'];
 
-export async function GET(req) {
+async function handleGET(req) {
     const { session, user, error, status } = await requirePermission('canModerate');
     if (error) return Response.json({ msg: error }, { status });
     await connectDB();
@@ -57,3 +58,5 @@ export async function GET(req) {
     const moderators = await User.find({ _id: { $in: moderatorIds } }).select('name').sort({ name: 1 }).lean();
     return Response.json({ items, moderators, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
 }
+
+export const GET = withApiErrors(handleGET, { route: '/api/moderation/history', method: 'GET' });

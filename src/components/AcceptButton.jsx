@@ -1,4 +1,5 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -11,7 +12,7 @@ export default function AcceptButton({ answerId }) {
         setLoading(true);
         setError('');
         try {
-            const response = await fetch(`/api/answers/${answerId}/accept`, { method: 'PATCH' });
+            const response = await fetchWithTimeout(`/api/answers/${answerId}/accept`, { method: 'PATCH' });
             const data = await response.json();
             if (!response.ok) throw new Error(data.msg || 'Could not accept this answer.');
             router.refresh();

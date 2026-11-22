@@ -31,17 +31,33 @@ async function LandingContent() {
                     </div>
 
                     <div className="relative lg:pb-8">
-                        <div className="hero-card relative overflow-hidden rounded-xl border border-rule bg-sheet p-5 sm:p-7">
-                            <div className="mb-8 flex items-center justify-between border-b border-rule pb-4"><span className="text-xs font-bold uppercase tracking-[0.18em] text-graphite">Live question</span><span className="flex items-center gap-2 text-xs font-semibold text-verified"><span className="h-2 w-2 rounded-full bg-verified" />Verified</span></div>
+                        <div className="hero-card relative overflow-hidden rounded-xl border border-rule bg-sheet p-5 sm:p-7" aria-label="Example learning thread">
+                            <div className="mb-8 flex items-center justify-between border-b border-rule pb-4"><span className="text-xs font-bold uppercase tracking-[0.18em] text-graphite">Example thread</span><span className="flex items-center gap-2 text-xs font-semibold text-verified"><span className="h-2 w-2 rounded-full bg-verified" />Verified explanation</span></div>
                             <StatusTimeline status="VERIFIED" />
                             <p className="mt-8 text-xs font-bold uppercase tracking-[0.13em] text-pencil">Graph algorithms · DAA</p>
                             <h2 className="mt-3 max-w-md text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">When does Dijkstra&rsquo;s algorithm fail?</h2>
                             <p className="mt-4 max-w-md font-serif text-base leading-7 text-graphite">I understand the steps, but I can&rsquo;t see why one negative edge changes everything.</p>
                             <div className="mt-7 border-l-2 border-pencil pl-4"><p className="text-sm font-semibold">A useful answer is more than a solution.</p><p className="mt-1 text-sm leading-6 text-graphite">It shows the reasoning you can reuse next time.</p></div>
-                            <div className="mt-8 flex items-center justify-between border-t border-rule pt-4 text-xs text-graphite"><span>Answered by Riya · reviewed by course staff</span><span>2:14 a.m.</span></div>
+                            <div className="mt-8 flex items-center justify-between border-t border-rule pt-4 text-xs text-graphite"><span>Peer explanation · reviewed by course staff</span><span>Sample flow</span></div>
                         </div>
                         <div className="hero-badge absolute -bottom-4 -left-3 hidden px-3 py-2 text-xs font-bold sm:block">Saved to class knowledge ↗</div>
                     </div>
+                </div>
+            </section>
+
+            <section className="border-b border-rule bg-sheet" aria-label="Community activity">
+                <div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-rule px-5 sm:px-8 lg:grid-cols-4 lg:px-12">
+                    {[
+                        ['01', 'Student questions'],
+                        ['02', 'Peer explanations'],
+                        ['03', 'Course staff review'],
+                        ['04', 'Searchable knowledge'],
+                    ].map(([value, label], index) => (
+                        <div key={label} className={`landing-stat py-5 ${index > 1 ? 'border-t border-rule lg:border-t-0' : ''}`}>
+                            <p className="font-mono text-2xl font-semibold tracking-tight text-pencil tabular-nums">{value}</p>
+                            <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-graphite">{label}</p>
+                        </div>
+                    ))}
                 </div>
             </section>
 

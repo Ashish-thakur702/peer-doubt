@@ -11,11 +11,6 @@ export const metadata = {
 export default function RootLayout({ children }) {
     return (
         <html lang="en" suppressHydrationWarning>
-            <head>
-                <script dangerouslySetInnerHTML={{
-                    __html: "try{var t=localStorage.getItem('unstuck-theme');document.documentElement.dataset.theme=t||'dark'}catch(e){document.documentElement.dataset.theme='dark'}",
-                }} />
-            </head>
             <body className="font-sans antialiased">
                 <Providers>
                     <Suspense fallback={<div className="h-16 border-b border-rule bg-sheet" aria-hidden="true" />}>

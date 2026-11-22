@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { z } from 'zod';
 import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
@@ -9,7 +10,7 @@ import { validObjectId } from '@/lib/moderation';
 
 const schema = z.object({ content: z.string().trim().min(10).max(10000) });
 
-export async function PATCH(req, { params }) {
+async function handlePATCH(req, { params }) {
     const { session, error, status } = await requireRole('helper');
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
@@ -44,3 +45,5 @@ export async function PATCH(req, { params }) {
     } catch (notifyError) { console.error('ANSWER_REVISION_NOTIFICATION_FAILED', { name: notifyError?.name || 'Error' }); }
     return Response.json({ ok: true, status: 'PENDING' });
 }
+
+export const PATCH = withApiErrors(handlePATCH, { route: '/api/answers/[id]', method: 'PATCH' });

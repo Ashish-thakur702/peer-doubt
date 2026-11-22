@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import connectDB from '@/lib/db';
@@ -12,7 +13,7 @@ import { getModerationAnswerFilter } from '@/lib/auth/scope.mjs';
 const schema = z.object({ note: z.string().trim().min(3).max(1000) });
 const PENDING = ['PENDING', 'SUBMITTED', 'PENDING_REVIEW', 'ACCEPTED'];
 
-export async function PATCH(req, { params }) {
+async function handlePATCH(req, { params }) {
     const { session, user, error, status } = await requirePermission('canModerate');
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
@@ -59,3 +60,5 @@ export async function PATCH(req, { params }) {
         return Response.json({ msg: err.status ? err.message : 'Could not request a correction' }, { status: err.status || 500 });
     } finally { if (transaction) await transaction.endSession(); }
 }
+
+export const PATCH = withApiErrors(handlePATCH, { route: '/api/moderation/answers/[id]/revise', method: 'PATCH' });

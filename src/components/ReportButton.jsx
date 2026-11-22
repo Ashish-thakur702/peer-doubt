@@ -1,4 +1,5 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 
 import { useState } from 'react';
 
@@ -23,7 +24,7 @@ export default function ReportButton({ targetType, targetId }) {
         setBusy(true);
         setMessage('');
         try {
-            const response = await fetch('/api/reports', {
+            const response = await fetchWithTimeout('/api/reports', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ targetType, target: targetId, reasonCategory, details }),

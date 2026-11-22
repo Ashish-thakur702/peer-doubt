@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
 import Doubt from '@/models/Doubt';
@@ -10,7 +11,7 @@ import { requireRole, requirePermission } from '@/lib/session';
 import { hasPermission } from '@/lib/auth/roles.mjs';
 import { getModerationCourses } from '@/lib/auth/scope.mjs';
 
-export async function GET(_req, { params }) {
+async function handleGET(_req, { params }) {
     const { session, user, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
@@ -45,7 +46,7 @@ export async function GET(_req, { params }) {
 
 const archiveSchema = z.object({ reason: z.string().trim().min(3).max(1000) });
 
-export async function PATCH(req, { params }) {
+async function handlePATCH(req, { params }) {
     const { session, user, error, status } = await requirePermission('canArchiveKnowledge');
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
@@ -69,3 +70,6 @@ export async function PATCH(req, { params }) {
     });
     return Response.json({ ok: true, status: 'ARCHIVED' });
 }
+
+export const GET = withApiErrors(handleGET, { route: '/api/knowledge/[id]', method: 'GET' });
+export const PATCH = withApiErrors(handlePATCH, { route: '/api/knowledge/[id]', method: 'PATCH' });

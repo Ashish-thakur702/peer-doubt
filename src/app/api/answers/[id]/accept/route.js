@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
@@ -7,7 +8,7 @@ import { requireRole } from '@/lib/session';
 
 const ACCEPTABLE_STATUSES = ['PENDING', 'SUBMITTED', 'PENDING_REVIEW'];
 
-export async function PATCH(req, { params }) {
+async function handlePATCH(req, { params }) {
     const { session, error, status } = await requireRole();
     if (error) return Response.json({ msg: error }, { status });
 
@@ -35,3 +36,5 @@ export async function PATCH(req, { params }) {
     await User.findByIdAndUpdate(answer.helper, { $inc: { 'helperProfile.reputation': 10 } });
     return Response.json({ msg: 'Accepted' });
 }
+
+export const PATCH = withApiErrors(handlePATCH, { route: '/api/answers/[id]/accept', method: 'PATCH' });

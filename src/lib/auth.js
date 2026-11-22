@@ -5,26 +5,30 @@ import User from '@/models/User';
 import { canSignInAs } from '@/lib/auth/login-role.mjs';
 
 export const authOptions = {
+    secret: process.env.NEXTAUTH_SECRET,
     session: { strategy: 'jwt' },
     pages: { signIn: '/login' },
     providers: [
         CredentialsProvider({
             credentials: { email: {}, password: {}, loginAs: {} },
             async authorize(credentials) {
-                const email = credentials?.email?.trim().toLowerCase();
+                const email = typeof credentials?.email === 'string' ? credentials.email.trim().toLowerCase() : '';
                 const password = credentials?.password;
                 const loginAs = credentials?.loginAs;
-                if (!email || typeof password !== 'string' || !password || !loginAs) return null;
+                if (!email || typeof password !== 'string' || !password || typeof loginAs !== 'string') return null;
+                let user;
                 try {
                     await connectDB();
+                    user = await User.findOne({ email });
                 } catch (error) {
                     console.error('AUTH_DATABASE_UNAVAILABLE', {
                         name: error?.name || 'Error',
                         code: error?.code || error?.cause?.code || 'UNKNOWN',
                     });
-                    throw new Error('Authentication database unavailable');
+                    const authError = new Error('Authentication database unavailable');
+                    authError.code = 'AUTH_DATABASE_UNAVAILABLE';
+                    throw authError;
                 }
-                const user = await User.findOne({ email });
                 if (!user?.passwordHash || user.isSuspended || user.status === 'suspended') return null;
                 const ok = await bcrypt.compare(password, user.passwordHash);
                 if (!ok || !canSignInAs(user, loginAs)) return null;

@@ -1,4 +1,5 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 import { useState } from 'react';
 
 export default function KnowledgeSaveButton({ id, saved = false, onChange }) {
@@ -9,7 +10,7 @@ export default function KnowledgeSaveButton({ id, saved = false, onChange }) {
     async function toggle() {
         setBusy(true); setError('');
         try {
-            const response = await fetch(`/api/knowledge/${id}/bookmark`, {
+            const response = await fetchWithTimeout(`/api/knowledge/${id}/bookmark`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ saved: !isSaved }),
             });

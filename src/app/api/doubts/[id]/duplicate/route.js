@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import connectDB from '@/lib/db';
@@ -9,7 +10,7 @@ import { getModerationDoubtFilter } from '@/lib/auth/scope.mjs';
 
 const schema = z.object({ decision: z.enum(['CONFIRM', 'DISMISS']), originalDoubtId: z.string(), reason: z.string().trim().max(1000).optional().default('') });
 
-export async function PATCH(req, { params }) {
+async function handlePATCH(req, { params }) {
     const { session, user, error, status } = await requirePermission('canMarkDuplicate');
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
@@ -93,3 +94,5 @@ export async function PATCH(req, { params }) {
         return Response.json({ msg: 'Could not save this duplicate decision' }, { status: 500 });
     } finally { if (transaction) await transaction.endSession(); }
 }
+
+export const PATCH = withApiErrors(handlePATCH, { route: '/api/doubts/[id]/duplicate', method: 'PATCH' });

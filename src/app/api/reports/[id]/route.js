@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { z } from 'zod';
 import connectDB from '@/lib/db';
 import Answer from '@/models/Answer';
@@ -10,7 +11,7 @@ import { getModerationReportFilter } from '@/lib/auth/scope.mjs';
 
 const schema = z.object({ decision: z.enum(['RESOLVE', 'DISMISS', 'FLAG']), note: z.string().trim().max(1000).optional().default('') });
 
-export async function PATCH(req, { params }) {
+async function handlePATCH(req, { params }) {
     const { session, user, error, status } = await requirePermission('canReviewReports');
     if (error) return Response.json({ msg: error }, { status });
     const { id } = await params;
@@ -85,3 +86,5 @@ export async function PATCH(req, { params }) {
     } catch (notifyError) { console.error('REPORT_DECISION_NOTIFICATION_FAILED', { name: notifyError?.name || 'Error' }); }
     return Response.json({ ok: true, status: updated.status });
 }
+
+export const PATCH = withApiErrors(handlePATCH, { route: '/api/reports/[id]', method: 'PATCH' });

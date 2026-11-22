@@ -1,4 +1,5 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -12,7 +13,7 @@ export default function ArchiveKnowledgeButton({ id }) {
     async function archive(event) {
         event.preventDefault(); setBusy(true); setError('');
         try {
-            const response = await fetch(`/api/knowledge/${id}`, {
+            const response = await fetchWithTimeout(`/api/knowledge/${id}`, {
                 method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }),
             });
             const data = await response.json();

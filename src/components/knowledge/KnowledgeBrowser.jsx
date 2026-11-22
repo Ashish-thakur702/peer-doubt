@@ -1,8 +1,10 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/client-fetch';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import StatusBadge from '@/components/StatusBadge';
 import KnowledgeSaveButton from '@/components/knowledge/KnowledgeSaveButton';
+import { formatDate } from '@/lib/format-date';
 
 export default function KnowledgeBrowser({ initialFilters = { q: '', course: '', topic: '' }, initialSort = 'newest', initialPage = '' }) {
     const [filters, setFilters] = useState(initialFilters);
@@ -11,6 +13,7 @@ export default function KnowledgeBrowser({ initialFilters = { q: '', course: '',
     const [data, setData] = useState({ items: [], filters: { courses: [], topics: [] }, pagination: null });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [attempt, setAttempt] = useState(0);
 
     useEffect(() => {
         let active = true;
@@ -22,7 +25,7 @@ export default function KnowledgeBrowser({ initialFilters = { q: '', course: '',
             if (filters.course) params.set('course', filters.course);
             if (filters.topic) params.set('topic', filters.topic);
             try {
-                const res = await fetch(`/api/knowledge?${params}`, { signal: controller.signal });
+                const res = await fetchWithTimeout(`/api/knowledge?${params}`, { signal: controller.signal });
                 const json = await res.json();
                 if (!res.ok) throw new Error(json.msg || 'Could not load the knowledge library.');
                 if (active) setData(json);
@@ -30,7 +33,7 @@ export default function KnowledgeBrowser({ initialFilters = { q: '', course: '',
             finally { if (active) setLoading(false); }
         }, 180);
         return () => { active = false; clearTimeout(timer); controller.abort(); };
-    }, [filters, page, sort]);
+    }, [filters, page, sort, attempt]);
 
     useEffect(() => {
         const params = new URLSearchParams();
@@ -57,12 +60,12 @@ export default function KnowledgeBrowser({ initialFilters = { q: '', course: '',
             <label><span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-graphite">Sort by</span><select className="field" value={sort} onChange={(event) => { setPage(1); setSort(event.target.value); }}><option value="relevance" disabled={!filters.q.trim()}>Relevance</option><option value="newest">Recently verified</option><option value="helpful">Most helpful</option><option value="views">Most viewed</option></select></label>
         </section>
         <div className="mb-3 flex min-h-6 items-center justify-between text-sm text-graphite"><span>{loading ? 'Searching…' : `${data.pagination?.total || 0} verified ${data.pagination?.total === 1 ? 'answer' : 'answers'}`}</span>{filters.q || filters.course || filters.topic ? <button type="button" className="font-semibold text-pencil hover:underline" onClick={() => { setPage(1); setFilters({ q: '', course: '', topic: '' }); setSort('newest'); }}>Clear filters</button> : null}</div>
-        {error && <p className="rounded-xl border border-margin/30 bg-margin/10 p-4 text-sm text-margin" role="alert">{error}</p>}
+        {error && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-margin/30 bg-margin/10 p-4"><p className="text-sm text-margin" role="alert">{error}</p><button type="button" className="btn-quiet" onClick={() => { setError(''); setAttempt((value) => value + 1); }}>Try again</button></div>}
         {loading ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Loading knowledge library">{[1, 2, 3].map((item) => <div key={item} className="card h-56 animate-pulse" />)}</div> : null}
         {!loading && !error && !data.items.length && <div className="card px-5 py-14 text-center"><span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-marker text-xl" aria-hidden="true">⌕</span><h2 className="mt-4 font-bold">No matching answers</h2><p className="mx-auto mt-1 max-w-md text-sm leading-6 text-graphite">Try a broader search or clear one of the filters. Verified answers will appear here as moderators publish them.</p></div>}
         {!loading && data.items.length > 0 && <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {data.items.map((entry) => <article key={entry._id} className="card flex h-full flex-col p-5 transition hover:border-pencil/40 hover:shadow-[var(--ui-shadow)]">
-                <div className="flex items-center justify-between gap-2"><StatusBadge status="VERIFIED" /><KnowledgeSaveButton id={entry._id} saved={entry.bookmarked} /><span className="text-xs text-graphite">{new Date(entry.verifiedAt).toLocaleDateString()}</span></div>
+                <div className="flex items-center justify-between gap-2"><StatusBadge status="VERIFIED" /><KnowledgeSaveButton id={entry._id} saved={entry.bookmarked} /><span className="text-xs text-graphite">{formatDate(entry.verifiedAt)}</span></div>
                 <p className="mt-4 text-xs font-bold uppercase tracking-wide text-pencil">{entry.course} · {entry.topic}</p>
                 <h2 className="mt-2 text-lg font-bold leading-snug">{entry.title}</h2>
                 <p className="mt-2 line-clamp-3 text-sm leading-6 text-graphite">{entry.answerContent}</p>
