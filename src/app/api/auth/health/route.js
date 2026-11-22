@@ -1,6 +1,7 @@
 import { withApiErrors } from '@/lib/api-errors';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
+import { cleanEnvironmentValue, getAuthUrlConfig } from '@/lib/url-config.mjs';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -13,13 +14,14 @@ function response(body, status = 200) {
 }
 
 async function handleGET() {
-    const uri = process.env.MONGODB_URI?.trim();
+    const uri = cleanEnvironmentValue(process.env.MONGODB_URI);
     const isTemplateUri = uri?.includes('YOUR_CLUSTER') || /\/\/USERNAME:PASSWORD@/i.test(uri || '');
+    const authUrls = getAuthUrlConfig(process.env);
 
     if (!uri || isTemplateUri)
         return response({ available: false, issue: 'database_config_missing' }, 503);
 
-    if (process.env.NODE_ENV === 'production' && (!process.env.NEXTAUTH_SECRET || !process.env.NEXTAUTH_URL))
+    if (process.env.NODE_ENV === 'production' && (!cleanEnvironmentValue(process.env.NEXTAUTH_SECRET) || !authUrls.configured))
         return response({ available: false, issue: 'auth_config_missing' }, 503);
 
     let timeout;

@@ -1,5 +1,6 @@
 import 'server-only';
 import mongoose from 'mongoose';
+import { cleanEnvironmentValue } from '@/lib/url-config.mjs';
 
 const CACHE_KEY = '__unstuckMongoose';
 const connectionCache = globalThis[CACHE_KEY] || (globalThis[CACHE_KEY] = {
@@ -16,7 +17,7 @@ function configurationError(code, message) {
 }
 
 function readMongoConfig() {
-    const uri = process.env.MONGODB_URI?.trim();
+    const uri = cleanEnvironmentValue(process.env.MONGODB_URI);
     if (!uri)
         throw configurationError('MONGODB_CONFIG_MISSING', 'Set MONGODB_URI in the application environment.');
     if (uri.includes('YOUR_CLUSTER') || /\/\/USERNAME:PASSWORD@/i.test(uri))
