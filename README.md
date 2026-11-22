@@ -12,6 +12,17 @@ Requirements: Node.js 20.9 or newer, npm, and access to the shared MongoDB Atlas
 4. Set a private `NEXTAUTH_SECRET` and `NEXTAUTH_URL=http://localhost:3000`.
 5. Start with `npm run dev` and open `http://localhost:3000`.
 
+## Production deployment
+
+For Vercel, add these variables in **Project Settings → Environment Variables** for the Production environment:
+
+- `MONGODB_URI`: the Atlas application connection string for the `Doubt` database.
+- `MONGODB_DB`: `Doubt`.
+- `NEXTAUTH_SECRET`: a private random value. Generate one locally with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"` and paste the output into Vercel; do not commit it.
+- `NEXTAUTH_URL`: the full canonical production URL, such as `https://your-project.vercel.app`.
+
+Configure Preview variables separately if you need preview sign-in, and use a stable preview hostname that matches `NEXTAUTH_URL`. Redeploy after changing environment variables. The public landing page remains available when the auth secret is missing, while the login page reports the required production configuration.
+
 The application selects the existing Atlas database `Doubt`; `MONGODB_DB` takes precedence over the URI path. Run `npm run db:init` to create or reuse the application collections and indexes derived from the Mongoose models without inserting documents. The canonical course list remains static in `src/lib/courses.js`; no Course model is required. All team members must use the same cluster, `Doubt` database, and application database user. MongoDB Compass is only a database client; the app connects directly from its backend.
 
 Use a dedicated application database user scoped to `readWrite` on `Doubt`; do not put an Atlas administrator credential in app configuration. The application code cannot change Atlas user roles. Add each developer's current IP to Atlas Network Access; do not use unrestricted public access as the default. Percent-encode special characters in the URI username and password. Never use Atlas credentials as application login credentials.

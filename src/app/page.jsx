@@ -12,7 +12,10 @@ const FLOW = [
 ];
 
 async function LandingContent() {
-    const session = await getServerSession(authOptions);
+    // The public landing page must remain renderable while production auth is being configured.
+    // The login health check gives the exact setup message when NEXTAUTH_SECRET is absent.
+    const missingProductionSecret = process.env.NODE_ENV === 'production' && !authOptions.secret;
+    const session = missingProductionSecret ? null : await getServerSession(authOptions);
     if (session) redirect('/doubts/mine');
 
     return (

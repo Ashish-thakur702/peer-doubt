@@ -4,7 +4,7 @@ import { fetchWithTimeout } from '@/lib/client-fetch';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTheme } from '@/components/Providers';
 import { getNavigationLinks } from '@/lib/navigation.mjs';
 import { roleLabel, getPrimaryRole } from '@/lib/auth/roles.mjs';
@@ -85,18 +85,12 @@ export default function Navbar() {
     const initials = (session?.user?.name || session?.user?.email || 'U').split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
     const shortName = session?.user?.name?.trim().split(/\s+/)[0] || 'there';
 
-    const commands = useMemo(() => {
-        const base = navLinks.map((item) => ({ ...item, kind: 'page' }));
-        if (session) base.push({ href: '/notifications', label: 'Notifications', kind: 'page' });
-        const needle = query.trim().toLowerCase();
-        const matched = needle ? base.filter((item) => item.label.toLowerCase().includes(needle)) : base;
-        if (needle && !matched.some((item) => item.href === '/knowledge')) {
-            matched.push({ href: `/knowledge?q=${encodeURIComponent(query.trim())}`, label: `Search knowledge for “${query.trim()}”`, kind: 'search' });
-        } else if (needle) {
-            matched.push({ href: `/knowledge?q=${encodeURIComponent(query.trim())}`, label: `Search knowledge for “${query.trim()}”`, kind: 'search' });
-        }
-        return matched.slice(0, 8);
-    }, [navLinks, query, session]);
+    const baseCommands = navLinks.map((item) => ({ ...item, kind: 'page' }));
+    if (session) baseCommands.push({ href: '/notifications', label: 'Notifications', kind: 'page' });
+    const needle = query.trim().toLowerCase();
+    const commands = needle ? baseCommands.filter((item) => item.label.toLowerCase().includes(needle)) : baseCommands;
+    if (needle) commands.push({ href: `/knowledge?q=${encodeURIComponent(query.trim())}`, label: `Search knowledge for “${query.trim()}”`, kind: 'search' });
+    const visibleCommands = commands.slice(0, 8);
 
     useEffect(() => {
         if (!session) return undefined;
@@ -128,12 +122,12 @@ export default function Navbar() {
             if (active) setFreshRoleState({ userId: session.user.id, roles: session.user.roles || (session.user.role ? [session.user.role] : []) });
         });
         return () => { active = false; };
-    }, [session?.user?.id, session?.user?.role, pathname]);
+    }, [session?.user?.id, session?.user?.role, session?.user?.roles, pathname]);
 
     useEffect(() => {
         const onKeyDown = (event) => {
             if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-                event.preventDefault(); setPaletteOpen(true); setUserMenuOpen(false);
+                event.preventDefault(); setQuery(''); setActiveCommand(0); setPaletteOpen(true); setUserMenuOpen(false);
             }
             if (event.key === 'Escape') { setPaletteOpen(false); setUserMenuOpen(false); }
         };
@@ -143,14 +137,9 @@ export default function Navbar() {
 
     useEffect(() => {
         if (paletteOpen) {
-            setQuery(''); setActiveCommand(0);
             window.requestAnimationFrame(() => searchRef.current?.focus());
         }
     }, [paletteOpen]);
-
-    useEffect(() => {
-        setUserMenuOpen(false); setPaletteOpen(false); setMobileMenuOpen(false);
-    }, [pathname]);
 
     useEffect(() => {
         if (!userMenuOpen) return undefined;
@@ -170,13 +159,14 @@ export default function Navbar() {
 
     function openCommand(item) {
         setPaletteOpen(false);
+        setUserMenuOpen(false);
         router.push(item.href);
     }
 
     function onPaletteKeyDown(event) {
-        if (event.key === 'ArrowDown') { event.preventDefault(); setActiveCommand((value) => Math.min(value + 1, commands.length - 1)); }
+        if (event.key === 'ArrowDown') { event.preventDefault(); setActiveCommand((value) => Math.min(value + 1, visibleCommands.length - 1)); }
         if (event.key === 'ArrowUp') { event.preventDefault(); setActiveCommand((value) => Math.max(value - 1, 0)); }
-        if (event.key === 'Enter' && commands[activeCommand]) { event.preventDefault(); openCommand(commands[activeCommand]); }
+        if (event.key === 'Enter' && visibleCommands[activeCommand]) { event.preventDefault(); openCommand(visibleCommands[activeCommand]); }
         if (event.key === 'Tab') {
             const focusable = [...(commandDialogRef.current?.querySelectorAll('input:not(:disabled), button:not(:disabled)') || [])];
             if (event.shiftKey && document.activeElement === focusable[0]) { event.preventDefault(); focusable.at(-1)?.focus(); }
@@ -198,7 +188,7 @@ export default function Navbar() {
             <nav className="sidebar-links">
                 {navLinks.map((item) => {
                     const active = activePage?.href === item.href;
-                    return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} title={collapsed ? item.label : undefined} className={`sidebar-link ${active ? 'is-active' : ''}`}>
+                    return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} title={collapsed ? item.label : undefined} onClick={() => { setUserMenuOpen(false); setMobileMenuOpen(false); setPaletteOpen(false); }} className={`sidebar-link ${active ? 'is-active' : ''}`}>
                         <span className="sidebar-link-icon"><Icon name={iconFor(item.href)}/></span><span className="sidebar-link-label">{item.label}</span>{active && <span className="sidebar-active-dot" aria-hidden="true"/>}
                     </Link>;
                 })}
@@ -214,7 +204,7 @@ export default function Navbar() {
         <header className="app-topbar">
             <div className="topbar-context"><span className="topbar-context-label">{activePage?.label || 'Workspace'}</span><span className="topbar-context-separator">/</span><span className="topbar-context-welcome">Good to see you, {shortName}</span></div>
             <div className="topbar-actions">
-                <button type="button" className="topbar-search" onClick={() => setPaletteOpen(true)} aria-label="Search or jump to a page"><Icon name="search"/><span>Search anything</span><kbd><span>⌘</span>K</kbd></button>
+                <button type="button" className="topbar-search" onClick={() => { setQuery(''); setActiveCommand(0); setPaletteOpen(true); setUserMenuOpen(false); }} aria-label="Search or jump to a page"><Icon name="search"/><span>Search anything</span><kbd><span>⌘</span>K</kbd></button>
                 <Link href="/notifications" className="topbar-icon-button notification-action" aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`} title="Notifications"><Icon name="bell"/>{unread > 0 && <span className="notification-dot">{unread > 99 ? '99+' : unread}</span>}</Link>
                 <button type="button" className="topbar-icon-button" onClick={toggleTheme} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} title="Change appearance"><Icon name={theme === 'dark' ? 'sun' : 'moon'}/></button>
                 <div className="topbar-profile" ref={userMenuRef}>
@@ -227,20 +217,20 @@ export default function Navbar() {
         <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
             {mobilePrimary.map((item) => {
                 const active = activePage?.href === item.href;
-                return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={`mobile-bottom-link ${active ? 'is-active' : ''}`}><Icon name={iconFor(item.href)} size={19}/><span>{item.label.replace('Knowledge library', 'Library').replace('My doubts', 'My doubts').replace('Help classmates', 'Help').replace('Ask a doubt', 'Ask')}</span></Link>;
+                return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} onClick={() => { setUserMenuOpen(false); setMobileMenuOpen(false); setPaletteOpen(false); }} className={`mobile-bottom-link ${active ? 'is-active' : ''}`}><Icon name={iconFor(item.href)} size={19}/><span>{item.label.replace('Knowledge library', 'Library').replace('My doubts', 'My doubts').replace('Help classmates', 'Help').replace('Ask a doubt', 'Ask')}</span></Link>;
             })}
             <button type="button" className={`mobile-bottom-link mobile-more-trigger ${mobileMenuOpen ? 'is-active' : ''}`} onClick={() => setMobileMenuOpen((value) => !value)} aria-expanded={mobileMenuOpen} aria-haspopup="menu"><Icon name="settings" size={19}/><span>More</span></button>
         </nav>
         {mobileMenuOpen && <div className="mobile-more-menu" role="menu" aria-label="More navigation">
             <p className="mobile-more-heading">YOUR WORKSPACE</p>
-            {mobileMore.map((item) => <Link key={item.href} role="menuitem" href={item.href} className="mobile-more-link"><Icon name={item.href === '/notifications' ? 'bell' : iconFor(item.href)} size={17}/><span>{item.label}</span>{item.href === '/notifications' && unread > 0 && <span className="mobile-more-count">{unread > 99 ? '99+' : unread}</span>}</Link>)}
+            {mobileMore.map((item) => <Link key={item.href} role="menuitem" href={item.href} onClick={() => { setMobileMenuOpen(false); setUserMenuOpen(false); }} className="mobile-more-link"><Icon name={item.href === '/notifications' ? 'bell' : iconFor(item.href)} size={17}/><span>{item.label}</span>{item.href === '/notifications' && unread > 0 && <span className="mobile-more-count">{unread > 99 ? '99+' : unread}</span>}</Link>)}
         </div>}
 
         {paletteOpen && <div className="command-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) setPaletteOpen(false); }}>
             <section ref={commandDialogRef} className="command-dialog" role="dialog" aria-modal="true" aria-label="Search and navigate" onKeyDown={onPaletteKeyDown}>
                 <div className="command-input-row"><Icon name="search"/><input ref={searchRef} value={query} onChange={(event) => { setQuery(event.target.value); setActiveCommand(0); }} placeholder="Search knowledge or jump to a page..." aria-label="Search knowledge or pages"/><kbd>ESC</kbd></div>
                 <p className="command-label">{query ? 'SUGGESTED DESTINATIONS' : 'QUICK NAVIGATION'}</p>
-                <div className="command-results" role="listbox">{commands.length ? commands.map((item, index) => <button type="button" role="option" aria-selected={activeCommand === index} key={`${item.href}-${item.label}`} className={`command-result ${activeCommand === index ? 'is-highlighted' : ''}`} onMouseEnter={() => setActiveCommand(index)} onClick={() => openCommand(item)}><span className="command-result-icon"><Icon name={item.kind === 'search' ? 'search' : iconFor(item.href)} size={17}/></span><span>{item.label}</span><span className="command-result-enter">↵</span></button>) : <p className="command-empty">No pages match that search.</p>}</div>
+            <div className="command-results" role="listbox">{visibleCommands.length ? visibleCommands.map((item, index) => <button type="button" role="option" aria-selected={activeCommand === index} key={`${item.href}-${item.label}`} className={`command-result ${activeCommand === index ? 'is-highlighted' : ''}`} onMouseEnter={() => setActiveCommand(index)} onClick={() => openCommand(item)}><span className="command-result-icon"><Icon name={item.kind === 'search' ? 'search' : iconFor(item.href)} size={17}/></span><span>{item.label}</span><span className="command-result-enter">↵</span></button>) : <p className="command-empty">No pages match that search.</p>}</div>
                 <footer className="command-footer"><span><kbd>↑</kbd><kbd>↓</kbd> to navigate</span><span><kbd>↵</kbd> to open</span><span><kbd>⌘</kbd><kbd>K</kbd> to toggle</span></footer>
             </section>
         </div>}
