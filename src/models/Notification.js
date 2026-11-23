@@ -9,6 +9,8 @@ const notificationSchema = new mongoose.Schema({
     href: { type: String, required: true, match: /^\/(?!\/)/ },
     readAt: Date,
     dedupeKey: { type: String, unique: true, sparse: true },
+    isDemoData: { type: Boolean, default: false, index: true },
+    demoKey: { type: String, trim: true, unique: true, sparse: true },
 }, { timestamps: true });
 
 notificationSchema.index({ recipient: 1, readAt: 1, createdAt: -1 });

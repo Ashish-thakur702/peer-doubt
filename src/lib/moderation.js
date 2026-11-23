@@ -10,6 +10,8 @@ export async function recordModerationAction({
     relatedEntity,
     relatedEntityType,
     idempotencyKey,
+    isDemoData = false,
+    demoKey,
     session,
 }) {
     if (idempotencyKey) {
@@ -26,6 +28,7 @@ export async function recordModerationAction({
                     relatedEntity,
                     relatedEntityType,
                     idempotencyKey,
+                    ...(isDemoData ? { isDemoData: true, demoKey } : {}),
                 },
             },
             { upsert: true, new: true, session }
@@ -41,6 +44,8 @@ export async function recordModerationAction({
         reason,
         relatedEntity,
         relatedEntityType,
+        isDemoData,
+        demoKey,
     });
     return session ? log.save({ session }) : log.save();
 }

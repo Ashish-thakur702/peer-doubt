@@ -8,9 +8,13 @@ const moderationLogSchema = new mongoose.Schema(
         moderator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
         reasonCategory: { type: String, enum: ['INCORRECT', 'INCOMPLETE', 'OFF_TOPIC', 'SPAM_INAPPROPRIATE', 'OTHER'] },
         reason: { type: String, trim: true, maxlength: 1000, default: '' },
+        rating: { type: Number, min: 1, max: 5 },
+        feedback: { type: String, trim: true, maxlength: 1000, default: '' },
         relatedEntity: { type: mongoose.Schema.Types.ObjectId },
         relatedEntityType: { type: String, enum: ['answer', 'doubt', 'report', 'knowledge', 'user'] },
         idempotencyKey: { type: String, unique: true, sparse: true },
+        isDemoData: { type: Boolean, default: false, index: true },
+        demoKey: { type: String, trim: true, unique: true, sparse: true },
     },
     { timestamps: true }
 );

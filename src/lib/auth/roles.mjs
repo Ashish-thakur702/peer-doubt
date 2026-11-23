@@ -18,7 +18,8 @@ export const ROLE_HIERARCHY = Object.freeze([
 
 const PERMISSION_ROLES = Object.freeze({
     canModerate: [ROLES.ADMIN, ROLES.FACULTY, ROLES.CR],
-    canVerifyAnswer: [ROLES.ADMIN, ROLES.FACULTY, ROLES.CR],
+    canVerifyAnswer: [ROLES.ADMIN, ROLES.FACULTY],
+    canForwardAnswer: [ROLES.CR],
     canReviewReports: [ROLES.ADMIN, ROLES.FACULTY, ROLES.CR],
     canMarkDuplicate: [ROLES.ADMIN, ROLES.FACULTY, ROLES.CR],
     canArchiveKnowledge: [ROLES.ADMIN, ROLES.FACULTY],

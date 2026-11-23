@@ -11,12 +11,15 @@ const knowledgeEntrySchema = new mongoose.Schema(
         topic: { type: String, required: true, index: true },
         question: { type: String, required: true },
         answerContent: { type: String, required: true },
+        tags: { type: [{ type: String, trim: true, maxlength: 40 }], default: [] },
         helpfulCount: { type: Number, default: 0, min: 0 },
         viewCount: { type: Number, default: 0, min: 0 },
         status: { type: String, enum: ['ACTIVE', 'ARCHIVED'], default: 'ACTIVE', index: true },
         archivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         archivedAt: Date,
         archiveReason: { type: String, trim: true, maxlength: 1000, default: '' },
+        isDemoData: { type: Boolean, default: false, index: true },
+        demoKey: { type: String, trim: true, unique: true, sparse: true },
     },
     { timestamps: true }
 );

@@ -32,6 +32,7 @@ async function DoubtDetailContent({ params }) {
     const canSeeFlagged = viewer?.roles?.some((role) => ['cr', 'faculty', 'admin'].includes(role));
     const answers = await Answer.find({ doubt: doubt._id })
         .populate('helper', 'name')
+        .populate('verifiedBy', 'name')
         .populate('moderationHistory.moderator', 'name')
         .populate('revisions.editedBy', 'name')
         .sort({ createdAt: 1 })
@@ -121,6 +122,7 @@ async function DoubtDetailContent({ params }) {
                                 <span className="font-medium">{answer.helper?.name || 'Peer helper'}</span>
                                 <StatusBadge status={answer.status} />
                             </div>
+                            {answer.status === 'VERIFIED' && <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-verified/10 px-3 py-1 text-xs font-semibold text-verified motion-safe:animate-pulse">✓ Verified by {answer.verifiedBy?.name || 'Faculty'}</p>}
                             {decision && (
                                 <p className="mt-2 text-xs text-graphite">
                                     {answer.status === 'VERIFIED' ? 'Verified' : 'Reviewed'} by {decision.moderator?.name || 'Moderator'}

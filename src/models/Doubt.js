@@ -22,6 +22,8 @@ const doubtSchema = new mongoose.Schema(
         status: { type: String, enum: STATUSES, default: 'OPEN' },
         assignedHelper: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         developmentTestId: { type: String, trim: true, unique: true, sparse: true },
+        isDemoData: { type: Boolean, default: false, index: true },
+        demoKey: { type: String, trim: true, unique: true, sparse: true },
         duplicateOf: { type: mongoose.Schema.Types.ObjectId, ref: 'Doubt' },
         duplicateLinkCount: { type: Number, default: 0, min: 0 },
         flaggedForReview: { type: Boolean, default: false, index: true },

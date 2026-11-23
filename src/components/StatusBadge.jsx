@@ -6,6 +6,7 @@ const MAP = {
     SUBMITTED: { label: 'Awaiting review', cls: 'bg-marker text-ink' },
     PENDING_REVIEW: { label: 'Awaiting review', cls: 'bg-marker text-ink' },
     ACCEPTED: { label: 'Accepted by asker', cls: 'bg-verified/10 text-verified' },
+    FACULTY_PENDING: { label: 'Awaiting faculty verification', cls: 'bg-marker text-ink' },
     REVISION_REQUESTED: { label: 'Correction requested', cls: 'bg-marker text-ink' },
     VERIFIED: { label: 'Verified', cls: 'bg-verified/10 text-verified' },
     RESOLVED: { label: 'Resolved', cls: 'bg-verified/10 text-verified' },

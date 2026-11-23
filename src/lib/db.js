@@ -1,6 +1,23 @@
-import 'server-only';
+import dns from 'node:dns';
 import mongoose from 'mongoose';
-import { cleanEnvironmentValue } from '@/lib/url-config.mjs';
+import { cleanEnvironmentValue } from './url-config.mjs';
+
+function applyDnsConfiguration() {
+    const raw = process.env.MONGODB_DNS_SERVERS || '8.8.8.8,1.1.1.1';
+    try {
+        const configuredDnsServers = raw
+            .split(',')
+            .map((server) => server.trim())
+            .filter(Boolean);
+        if (configuredDnsServers.length) {
+            dns.setServers(configuredDnsServers);
+        }
+    } catch {
+        // Keep environment default if setting servers fails
+    }
+}
+
+applyDnsConfiguration();
 
 const CACHE_KEY = '__unstuckMongoose';
 const connectionCache = globalThis[CACHE_KEY] || (globalThis[CACHE_KEY] = {
@@ -63,6 +80,7 @@ function attachConnectionDiagnostics(connection) {
 }
 
 export default async function connectDB() {
+    applyDnsConfiguration();
     const { uri, dbName } = readMongoConfig();
 
     if (connectionCache.connection?.readyState === 1 && connectionCache.uri === uri)

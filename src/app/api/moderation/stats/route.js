@@ -36,7 +36,7 @@ async function handleGET() {
         { $match: { 'validAnswer.0': { $exists: true }, 'validDoubt.0': { $exists: true } } },
     ];
     const [pendingAnswers, verifiedAnswers, rejectedAnswers, openReports, verifiedThisWeek, duplicateDoubts, potentialDuplicatePairs, recentActivity, resolvedReports, verification, activity, knowledgeByCourse, knowledgeByTopic] = await Promise.all([
-        Answer.countDocuments({ ...scopedAnswers, status: { $in: ['PENDING', 'SUBMITTED', 'PENDING_REVIEW', 'ACCEPTED'] } }),
+        Answer.countDocuments({ ...scopedAnswers, status: { $in: ['PENDING', 'SUBMITTED', 'PENDING_REVIEW', 'ACCEPTED', 'FACULTY_PENDING'] } }),
         Answer.countDocuments({ ...scopedAnswers, status: 'VERIFIED' }),
         Answer.countDocuments({ ...scopedAnswers, status: 'REJECTED' }),
         Report.countDocuments({ ...scopedReports, status: 'OPEN' }),

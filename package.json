@@ -15,7 +15,10 @@
     "db:drop:sample": "node --env-file=.env.local scripts/drop-sample-mflix.mjs",
     "seed:dev": "node --env-file=.env.local scripts/seed-development.mjs",
     "seed:rbac-users": "node --env-file=.env.local scripts/seed-rbac-users.mjs",
-    "cleanup:dev": "node --env-file=.env.local scripts/cleanup-development.mjs"
+    "cleanup:dev": "node --env-file=.env.local scripts/cleanup-development.mjs",
+    "seed:faculty-cr": "node scripts/seed-faculty-cr.js",
+    "seed:admin": "node scripts/seed-faculty-cr.js",
+    "demo:reset": "node scripts/demo-reset.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

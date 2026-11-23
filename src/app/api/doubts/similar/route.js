@@ -18,7 +18,7 @@ async function handleGET(req) {
         return Response.json({ msg: 'Unknown topic' }, { status: 400 });
 
     await connectDB();
-    const filter = { $text: { $search: q }, status: { $nin: ['REJECTED', 'DUPLICATE'] }, flaggedForReview: { $ne: true } };
+    const filter = { $text: { $search: q }, status: 'VERIFIED', flaggedForReview: { $ne: true } };
     if (course) filter.course = course;
     if (topic) filter.topic = topic;
     const results = await Doubt.find(

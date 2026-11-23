@@ -11,6 +11,8 @@ const STATUSES = ['PENDING', 'VERIFIED', 'REJECTED'];
 
 export default function AnswerQueue({ initialStatus = 'PENDING', initialPage = '', initialFilters = { q: '', course: '', topic: '', from: '', to: '' } }) {
     const { data: session } = useSession();
+    const roles = session?.user?.roles || [];
+    const isCr = roles.includes('cr') && !roles.includes('faculty') && !roles.includes('admin');
     const [items, setItems] = useState([]);
     const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
     const [page, setPage] = useState(() => Math.max(1, Number.parseInt(initialPage, 10) || 1));
@@ -18,6 +20,7 @@ export default function AnswerQueue({ initialStatus = 'PENDING', initialPage = '
     const [filters, setFilters] = useState(initialFilters);
     const [reasons, setReasons] = useState({});
     const [categories, setCategories] = useState({});
+    const [ratings, setRatings] = useState({});
     const [busy, setBusy] = useState('');
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
@@ -44,6 +47,12 @@ export default function AnswerQueue({ initialStatus = 'PENDING', initialPage = '
     }, [load]);
 
     useEffect(() => {
+        if (statusFilter !== 'PENDING') return undefined;
+        const interval = setInterval(load, 7000);
+        return () => clearInterval(interval);
+    }, [load, statusFilter]);
+
+    useEffect(() => {
         const params = new URLSearchParams();
         if (statusFilter !== 'PENDING') params.set('status', statusFilter);
         Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
@@ -56,33 +65,79 @@ export default function AnswerQueue({ initialStatus = 'PENDING', initialPage = '
         setError(''); setMessage('');
         const reason = (reasons[answer._id] || '').trim();
         const category = categories[answer._id];
-        if (['revise', 'reconsider'].includes(action) && reason.length < 3) {
-            setError('Add a short note explaining the requested revision.');
+        if (action === 'reject' && (!category || reason.length < 3)) {
+            setError('Choose a rejection reason and add a short explanation.');
             return;
         }
-        if (action === 'reject' && !category) {
-            setError('Choose a rejection reason before rejecting this answer.');
+        if (action === 'reconsider' && reason.length < 3) {
+            setError('Add a short note explaining why the answer should be reopened.');
             return;
         }
-        if (action === 'reject' && category === 'OTHER' && reason.length < 3) {
-            setError('Add an explanation when selecting Other.');
+        if (!isCr && action !== 'reject' && reason.length < 3) {
+            setError('Add written feedback before saving this faculty review.');
+            return;
+        }
+        if (!isCr && action !== 'reconsider' && !ratings[answer._id]) {
+            setError('Choose a 1–5 star rating before saving this faculty review.');
             return;
         }
         setBusy(answer._id);
         try {
-            const route = action === 'reconsider' ? 'reconsider' : action === 'revise' ? 'revise' : action;
-            const res = await fetchWithTimeout(`/api/moderation/answers/${answer._id}/${route}`, {
-                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(action === 'reject' ? { category, note: reason } : { note: reason }),
-            });
+            let res;
+            if (isCr) {
+                res = await fetchWithTimeout(`/api/moderation/answers/${answer._id}/forward`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(action === 'reject'
+                        ? { decision: 'REJECT', category, note: reason }
+                        : { decision: 'FORWARD' }),
+                });
+            } else {
+                const route = action === 'needs-improvement' ? 'needs-improvement' : action;
+                res = await fetchWithTimeout(`/api/moderation/answers/${answer._id}/${route}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: action === 'reconsider'
+                        ? JSON.stringify({ note: reason })
+                        : JSON.stringify(action === 'reject'
+                        ? { category, rating: ratings[answer._id], feedback: reason }
+                        : { rating: ratings[answer._id], feedback: reason }),
+                });
+            }
             const json = await res.json();
             if (!res.ok) throw new Error(json.msg || 'Could not save this decision.');
-            if (action === 'verify' || action === 'reject' || action === 'revise' || action === 'reconsider') {
-                setItems((current) => current.filter((item) => item._id !== answer._id));
-                setPagination((current) => ({ ...current, total: Math.max(0, current.total - 1) }));
-                if (items.length === 1 && page > 1) setPage((current) => current - 1);
-            }
-            setMessage(action === 'verify' ? 'Answer verified and added to the knowledge library.' : action === 'reject' ? 'Answer rejected. The reason was recorded.' : action === 'revise' ? 'Correction requested from the helper.' : 'Rejected answer reopened for correction.');
+            setMessage(isCr
+                ? (action === 'reject' ? 'Answer rejected and the helper was notified.' : 'Answer approved and forwarded to faculty.')
+                : action === 'verify' ? 'Answer verified and added to the knowledge library; the helper and student were notified.'
+                    : action === 'reject' ? 'Answer rejected. The reason was recorded and the helper was notified.'
+                        : 'Needs-improvement feedback was sent to the helper.');
+            await load();
+        } catch (err) { setError(err.message); }
+        finally { setBusy(''); }
+    }
+
+    async function markDuplicate(answer) {
+        setBusy(answer._id); setError(''); setMessage('');
+        try {
+            const params = new URLSearchParams({
+                q: answer.doubt?.title || '',
+                course: answer.doubt?.course || '',
+                topic: answer.doubt?.topic || '',
+            });
+            const matchesResponse = await fetchWithTimeout(`/api/doubts/similar?${params}`);
+            const matches = await matchesResponse.json();
+            if (!matchesResponse.ok) throw new Error(matches.msg || 'Could not find a verified original doubt.');
+            const original = matches.find((item) => item._id !== answer.doubt?._id);
+            if (!original) throw new Error('No verified matching doubt was found. Use Duplicate doubts to compare this question manually.');
+            const response = await fetchWithTimeout(`/api/doubts/${answer.doubt._id}/duplicate`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ decision: 'CONFIRM', originalDoubtId: original._id }),
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.msg || 'Could not mark this doubt as a duplicate.');
+            setMessage(`Doubt marked as a duplicate of “${original.title}”.`);
+            await load();
         } catch (err) { setError(err.message); }
         finally { setBusy(''); }
     }
@@ -114,7 +169,7 @@ export default function AnswerQueue({ initialStatus = 'PENDING', initialPage = '
     return (
         <div className="space-y-5">
             <div className="flex flex-wrap items-end justify-between gap-3">
-                <div><h2 className="text-xl font-bold">Answer review</h2><p className="mt-1 text-sm text-graphite">Review pending, verified and rejected answers with the original question.</p></div>
+                <div><h2 className="text-xl font-bold">{isCr ? 'CR moderation queue' : 'Faculty verification queue'}</h2><p className="mt-1 text-sm text-graphite">{isCr ? 'Review new helper answers, then forward suitable answers to faculty.' : 'Rate the explanation, leave feedback, and make the final verification decision.'}</p></div>
                 <span className="rounded-full bg-marker px-3 py-1 text-xs font-semibold text-ink">{loading ? 'Loading queue' : `${items.length} waiting`}</span>
             </div>
             <div role="tablist" aria-label="Answer status" className="flex flex-wrap gap-2">
@@ -136,7 +191,16 @@ export default function AnswerQueue({ initialStatus = 'PENDING', initialPage = '
             {!loading && items.map((answer) => (
                 <article key={answer._id} className="card overflow-hidden">
                     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule bg-paper/70 px-4 py-3 sm:px-5">
-                            <div className="flex flex-wrap items-center gap-2"><StatusBadge status={answer.status} /><span className="text-xs text-graphite">Submitted {formatDateTime(answer.createdAt)}</span>{answer.reviewAssignedTo && <span className="text-xs text-graphite">Assigned to {answer.reviewAssignedTo.name || 'Moderator'}</span>}</div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <StatusBadge status={answer.status} />
+                                {answer.status === 'VERIFIED' && (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-verified/10 px-2.5 py-0.5 text-xs font-semibold text-verified motion-safe:animate-pulse">
+                                        ✓ Verified by {answer.verifiedBy?.name || 'Faculty'}
+                                    </span>
+                                )}
+                                <span className="text-xs text-graphite">Submitted {formatDateTime(answer.createdAt)}</span>
+                                {answer.reviewAssignedTo && <span className="text-xs text-graphite">Assigned to {answer.reviewAssignedTo.name || 'Moderator'}</span>}
+                            </div>
                         {answer.doubt?._id && <Link href={`/doubts/${answer.doubt._id}`} className="text-sm font-semibold text-pencil hover:underline">Open doubt ↗</Link>}
                     </div>
                     <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[1fr_1.1fr]">
@@ -168,17 +232,37 @@ export default function AnswerQueue({ initialStatus = 'PENDING', initialPage = '
                             <option value="SPAM_INAPPROPRIATE">Spam or inappropriate content</option>
                             <option value="OTHER">Other</option>
                         </select>
-                        <label className="text-sm font-semibold" htmlFor={`note-${answer._id}`}>Moderator note <span className="font-normal text-graphite">(optional, required for Other)</span></label>
+                        <label className="text-sm font-semibold" htmlFor={`note-${answer._id}`}>{isCr ? 'Reason for rejection' : 'Written faculty feedback'} <span className="font-normal text-graphite">(required)</span></label>
                         <textarea id={`note-${answer._id}`} rows={2} maxLength={900} className="field resize-y" value={reasons[answer._id] || ''}
                             onChange={(event) => setReasons((current) => ({ ...current, [answer._id]: event.target.value }))}
-                            placeholder="Add context for your decision" />
+                            placeholder={isCr ? 'Explain why this answer cannot be forwarded' : 'Explain what is correct or needs improvement'} />
+                        {!isCr && <fieldset>
+                            <legend className="text-sm font-semibold">Faculty rating <span className="font-normal text-graphite">(required)</span></legend>
+                            <div className="mt-2 flex gap-1" role="radiogroup" aria-label="Faculty rating from 1 to 5 stars">
+                                {[1, 2, 3, 4, 5].map((rating) => <button
+                                    key={rating}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={ratings[answer._id] === rating}
+                                    aria-label={`${rating} ${rating === 1 ? 'star' : 'stars'}`}
+                                    className={`rounded px-1 text-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-pencil ${rating <= (ratings[answer._id] || 0) ? 'text-verified' : 'text-graphite'}`}
+                                    onClick={() => setRatings((current) => ({ ...current, [answer._id]: rating }))}
+                                >★</button>)}
+                            </div>
+                        </fieldset>}
                         <div className="flex flex-wrap justify-end gap-2">
                             {answer.reviewAssignedTo && answer.reviewAssignedTo._id !== session?.user?.id ? <p className="mr-auto self-center text-sm text-graphite">Assigned to {answer.reviewAssignedTo.name}</p> : <>
                                 {!answer.reviewAssignedTo && <button type="button" className="btn-quiet" onClick={() => assign(answer)} disabled={!!busy}>{busy === answer._id ? 'Assigning…' : 'Assign to me'}</button>}
                                 {answer.reviewAssignedTo?._id === session?.user?.id && <button type="button" className="btn-quiet" onClick={() => release(answer)} disabled={!!busy}>{busy === answer._id ? 'Releasing…' : 'Release assignment'}</button>}
-                                <button type="button" className="btn-quiet" onClick={() => review(answer, 'revise')} disabled={!!busy}>Request correction</button>
-                                <button type="button" className="btn-quiet text-margin" onClick={() => review(answer, 'reject')} disabled={!!busy}>Reject answer</button>
-                                <button type="button" className="btn-primary" onClick={() => review(answer, 'verify')} disabled={!!busy}>Verify and publish</button>
+                                {isCr ? <>
+                                    <button type="button" className="btn-quiet text-margin" onClick={() => review(answer, 'reject')} disabled={!!busy}>Reject</button>
+                                    <button type="button" className="btn-quiet" onClick={() => markDuplicate(answer)} disabled={!!busy}>Mark duplicate</button>
+                                    <button type="button" className="btn-primary" onClick={() => review(answer, 'forward')} disabled={!!busy}>Approve &amp; forward to faculty</button>
+                                </> : <>
+                                    <button type="button" className="btn-quiet text-margin" onClick={() => review(answer, 'reject')} disabled={!!busy}>Reject</button>
+                                    <button type="button" className="btn-quiet" onClick={() => review(answer, 'needs-improvement')} disabled={!!busy}>Needs improvement</button>
+                                    <button type="button" className="btn-primary" onClick={() => review(answer, 'verify')} disabled={!!busy}>Verify</button>
+                                </>}
                             </>}
                         </div>
                     </div>

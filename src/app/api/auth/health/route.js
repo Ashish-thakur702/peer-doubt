@@ -36,7 +36,7 @@ async function handleGET() {
                 const error = new Error('MongoDB health check timed out.');
                 error.code = 'MONGODB_CONNECT_TIMEOUT';
                 reject(error);
-            }, 12_000);
+            }, 15_000);
         });
         await Promise.race([databaseCheck, deadline]);
         return response({ available: true });

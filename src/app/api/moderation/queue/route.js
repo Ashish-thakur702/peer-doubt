@@ -33,7 +33,15 @@ async function handleGET(req) {
     }
 
     const statusFilter = url.searchParams.get('status') || 'PENDING';
-    const statusMap = { PENDING: ['PENDING', 'SUBMITTED', 'PENDING_REVIEW', 'ACCEPTED'], VERIFIED: ['VERIFIED'], REJECTED: ['REJECTED'] };
+    const isAdmin = user.roles.includes('admin');
+    const isFaculty = user.roles.includes('faculty') || isAdmin;
+    const statusMap = {
+        PENDING: isFaculty
+            ? (isAdmin ? ['FACULTY_PENDING', 'PENDING', 'SUBMITTED', 'PENDING_REVIEW', 'ACCEPTED'] : ['FACULTY_PENDING'])
+            : ['PENDING', 'SUBMITTED', 'PENDING_REVIEW', 'ACCEPTED'],
+        VERIFIED: ['VERIFIED'],
+        REJECTED: ['REJECTED'],
+    };
     if (!statusMap[statusFilter]) return Response.json({ msg: 'Unknown answer status' }, { status: 400 });
     const filter = { status: { $in: statusMap[statusFilter] } };
     const course = url.searchParams.get('course')?.trim();
@@ -71,6 +79,7 @@ async function handleGET(req) {
             .populate('doubt', 'title description course topic status createdAt')
             .populate('helper', 'name roles helperProfile.reputation')
             .populate('reviewAssignedTo', 'name')
+            .populate('verifiedBy', 'name')
             .populate('moderationHistory.moderator', 'name')
             .sort({ createdAt: 1 }).skip(skip).limit(limit).lean(),
         Answer.countDocuments(filter),
